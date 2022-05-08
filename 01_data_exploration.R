@@ -96,6 +96,21 @@ g_sevs <- list(g_sev)
 g_list <- c(g_hists,g_sevs,g_bars)
 grid.arrange(grobs = g_list)
 
+g_ageph_nbrtotc <-  mtpl %>% 
+                    group_by(ageph) %>% 
+                    summarize(n_claims = sum(nbrtotc))  %>%
+                    mutate(claim_freq = n_claims / sum(n_claims)) %>%
+                    ggplot(aes(x = ageph, y = claim_freq)) +
+                    geom_point(col = col) +
+                    theme_bw()
+
+g_codposs_nbrtotc <- mtpl %>% 
+                     group_by(codposs) %>% 
+                     summarize(n_claims = sum(nbrtotc))  %>%
+                     mutate(claim_freq = n_claims / sum(n_claims)) %>%
+                     ggplot(aes(x = codposs, y = claim_freq)) +
+                     geom_point(col = col) +
+                     theme_bw()
 ##----spatial_data_prep----------------------------------------------------------------------
 be_shape_sf <- st_read("./shape file Belgie postcodes/npc96_region_Project1.shp", quiet = T)
 be_shape_sf <- st_transform(be_shape_sf, "+proj=longlat", "+datum=WGS84")
@@ -112,7 +127,8 @@ be_shape_sf <- be_shape_sf %>%
                mutate(expo_pau = expo / Shape_Area) %>%
 
 be_shape_sf <- be_shape_sf %>%
-               mutate(expo_abin = cut(be_shape_sf$expo_pau, breaks = quantile(be_shape_sf$expo_pau, c(0,0.2,0.8,1), na.rm = T),
+               mutate(expo_abin = cut(be_shape_sf$expo_pau, 
+                                      breaks = quantile(be_shape_sf$expo_pau, c(0,0.2,0.8,1), na.rm = T),
                                       right = F, include.lowest = T,
                                       labels = c("low","medium","high")))
 ##----spatial_data_viz-----------------------------------------------------------------------
