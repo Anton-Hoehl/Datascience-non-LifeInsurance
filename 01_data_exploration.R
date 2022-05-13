@@ -27,7 +27,7 @@ str(inspost)
 mtpl <- mtpl %>% left_join(inspost, by = "CODPOSS")
 
 mtpl <- mtpl %>%
-        select(-COMMUNE) %>%
+        dplyr::select(-COMMUNE) %>%
         rename("ageph" = AGEPH,
                "codposs" = CODPOSS,
                "ins" = INS,
@@ -92,7 +92,7 @@ g_ageph <- gg.hist(mtpl, "ageph", binwidth = 2)
 g_hists <- list(g_duree, g_nbrtotan, g_nbrtotc, g_ageph)
 
 ##----dens_plots-------------------------------------------------------------------------------
-g_sev <- gg.dens(mtpl %>% filter(nbrtotc > 0, sev < 60000), "sev")     #severities over 60000 omitted
+g_sev <- gg.dens(mtpl %>% filter(nbrtotc > 0, sev <= 80000), "sev")     #severities over 80000 omitted
 g_sevs <- list(g_sev)
 
 ##----data_viz------------------------------------------------------------------------------
@@ -106,6 +106,17 @@ g_ageph_nbrtotc <-  mtpl %>%
                     ggplot(aes(x = ageph, y = claim_freq)) +
                     geom_point(col = col) +
                     theme_bw()
+
+g_ageph_sev <-      mtpl %>% 
+                    filter(nbrtotc > 0) %>%
+                    group_by(ageph) %>% 
+                    summarize(sev_agg = sum(sev))  %>%
+                    mutate(sev_freq = sev_agg / sum(sev_agg)) %>%
+                    ggplot(aes(x = ageph, y = sev_freq)) +
+                    geom_point(col = col) +
+                    theme_bw()                                
+
+#this plot indicate we might need 4 basis functions to fit this smoother for ageph on severity
 
 g_codposs_nbrtotc <- mtpl %>% 
                      group_by(codposs) %>% 
