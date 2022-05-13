@@ -1,15 +1,19 @@
 
-
-library(data.table)
-library(dplyr)
-library(ggplot2)
-library(caret)
-library(xgboost)
-library(e1071)
-library(cowplot)
-library(Matrix)
-library(magrittr)
-
+packages <- c("data.table",
+              "dplyr",
+              "ggplot2",
+              "caret",
+              "xgboost",
+              "e1071",
+              "cowplot",
+              "Matrix",
+              "magrittr")
+suppressMessages(packages <- lapply(packages, FUN = function(x) {
+  if (!require(x, character.only = TRUE)) {
+    install.packages(x)
+    library(x, character.only = TRUE)
+  }
+}))
 ##----data-----------------------------------------------------------------------
 
 mtpl <- read_delim(file = "Assignment.csv",

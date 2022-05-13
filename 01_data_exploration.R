@@ -47,6 +47,8 @@ mtpl %>% select_if(is.numeric) %>% summary()
 
 min(mtpl$ageph)
 max(mtpl$ageph)
+
+
 ##----data_viz_prep--------------------------------------------------------------
 pantone <- "#D0417E"
 col <- pantone
@@ -73,8 +75,9 @@ gg.dens <- function(data, variable) {
   ggplot(data = data, aes_string(x = variable)) +
     theme_bw() +
     geom_density(col = col, fill = fill, alpha = 0.5) +
-    labs(x = variable, y = "density") +
-    xlim(0.0001,10000)
+    xlab(variable) +
+    xlim(0,4000) +
+    ylab("density")
 }
 
 ##----bar_plots--------------------------------------------------------------
