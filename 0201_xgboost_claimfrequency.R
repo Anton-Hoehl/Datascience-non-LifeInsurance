@@ -89,12 +89,13 @@ mfolds <- function(dataset, K = 6) {
       xgboost::xgboost(
         data =  X,
         label = y,
-        nrounds = 1000,
-        objective = "reg:squarederror",
+        nrounds = 10,
+        objective = "count:poisson",
+        eval_metric = "poisson-nloglik",
         early_stopping_rounds = 3,
         max_depth = 3,
         eta = .15,
-        verbose = 0
+        verbose = 1
       )
     
     # in sample performance metrics
