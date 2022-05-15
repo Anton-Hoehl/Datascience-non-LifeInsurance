@@ -14,6 +14,23 @@ suppressMessages(packages <- lapply(packages, FUN = function(x) {
     library(x, character.only = TRUE)
   }
 }))
+
+poisson_deviance <- function(y, py) {
+  
+  if (y == 0) {
+    return(2*py)
+  }
+  
+  else {
+    
+    return((y * log(y / py) - (y - py)))
+    
+  }
+  
+}
+
+
+
 ##----data-----------------------------------------------------------------------
 
 mtpl <- read_delim(file = "Assignment.csv",
@@ -89,22 +106,20 @@ mfolds <- function(dataset, K = 6) {
       xgboost::xgboost(
         data =  X,
         label = y,
-        nrounds = 10,
+        nrounds = 500,
         objective = "count:poisson",
         eval_metric = "poisson-nloglik",
         early_stopping_rounds = 3,
         max_depth = 3,
         eta = .15,
-        verbose = 1
+        verbose = 0
       )
     
     # in sample performance metrics
     Yhat <- as.numeric(stats::predict(m1_xgb, new = X))
     
-    print(paste(
-      "In Sample RMSE: ", 
-      RMSE(dataset[idx1,]$nbrtotc, Yhat), 
-      sep = ""))
+    
+    print(mean(mapply(FUN = poisson_deviance, dataset[idx1,]$nbrtotc, Yhat)))
     
     # out of sample performance metrics
     X_test <-
@@ -113,13 +128,12 @@ mfolds <- function(dataset, K = 6) {
     
     Yhat_test <- as.numeric(stats::predict(m1_xgb, new = X_test))
     
-    print(paste(
-      "Out of Sample RMSE: ",
-      RMSE(dataset[idx1,]$nbrtotc, Yhat_test),
-      sep = ""
-    ))
+    print(mean(mapply(FUN = poisson_deviance, dataset[idx2,]$nbrtotc, Yhat_test)))
+
   }
   
 }
 
 mfolds(dataset = mtpl_training)
+
+
