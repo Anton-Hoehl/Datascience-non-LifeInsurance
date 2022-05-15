@@ -47,7 +47,7 @@ mtpl <- mtpl %>%
 
 mtpl_sev <- mtpl %>% 
             filter(sev != is.na(sev)& sev < 80000) %>%
-            dplyr::select(sev,ageph,lnexpo,agecar,sexp,fuelc,split,usec,fleetc,sportc,coverp,powerc,lat,long)
+            dplyr::select(sev,ageph,lnexpo,agecar,sexp,fuelc,split,usec,fleetc,sportc,coverp,powerc,lat,long,nbrtotc)
 
 ##----dist assumptions-----------------------------------------------------------------
 
@@ -77,16 +77,94 @@ mtpl_sev_split <- initial_split(mtpl_sev, prop = 0.75, strata = sev)
 mtpl_sev_training <- training(mtpl_sev_split)
 mtpl_sev_test <- testing(mtpl_sev_split)
 
-##----exhaustive gam search---------------------------------
+##----gam search for severity-----------------------------------------------------------
 
-glmfit1 <- glm(formula = sev ~ agecar + fuelc + usec + fleetc + sportc + coverp + powerc,
-               family = Gamma(),
-               data = mtpl_sev_training)
+sev_glm_low <- glm(formula = log(sev) ~ 1,
+                      family = gaussian(),
+                      weights = nbrtotc,
+                      data = mtpl_sev_training)
 
+sev_glm_high <- glm(formula = log(sev) ~ . -lnexpo -long -lat -nbrtotc -ageph,
+                       family = gaussian(),
+                       weights = nbrtotc,
+                       data = mtpl_sev_training)
 
-gamfit1 <- gam(formula = sev ~ s(ageph, k = 10),
-               family = Gamma(),
+summary(sevfit_glm_low)
+summary(sevfit_glm_high)
+
+step_sev <- stepAIC(sev_glm_low, 
+            scope = list(upper = sev_glm_high, lower = sev_glm_low),
+            method = "forward")
+
+sev_glm <- glm(formula = log(sev) ~ split + coverp + agecar + fleetc + powerc,
+                  family = gaussian(),
+                  weights = nbrtotc,
+                  data = mtpl_sev_training)
+
+summary(sev_glm)
+
+sev_gam1 <- gam(formula = 
+                log(sev) ~ split + coverp + agecar + fleetc + powerc + s(ageph) + s(lat,long),
+               family = gaussian(),
+               weights = nbrtotc,
                data = mtpl_sev_training) 
 
-summary(gamfit1)
-plot(gamfit1)
+
+summary(sev_gam1)
+plot(sev_gam1)
+par(mfrow = c(2,2))
+gam.check(sev_gam1)
+
+tuning_grid <- expand.grid(sp = seq(1, 3, by = 0.01), k = 1:10)
+
+
+fun <- function(x, sp, k) { 
+  paste("s(",x,", sp =",as.character(sp),", k =",as.character(k),")")
+}
+
+
+gam.tune <- function(response,
+                     variables,
+                     smooth,
+                     grid,
+                     family = gaussian(),
+                     data,
+                     weights = NULL,
+                     subset = NULL,
+                     offset = NULL,
+                     method = "GCV.Cp") 
+{
+  for(i in 1:length(grid)) {
+    
+    grid_crit <- cbind(grid, deviance = matrix(0,length(grid),1))
+    
+    sp <- grid[1,i]
+    k <- grid[2,i]
+    
+    smoothers <- sapply(FUN = fun, smooth, sp, k)
+    
+    glm_predictor <- paste(variables, collapse = " + ")
+    smooth_fun <- paste(smoothers, collapse = " + ")
+    predictor <- paste(glm_predictor, smooth_fun, sep = " + ")
+    f <- as.formula(paste(response, predictor, sep = " ~ "))
+    
+    model <- gam(formula = f,
+                 family = family,
+                 data = data,
+                 weights = weights)
+    
+    grid_crit$deviance <- model$deviance
+    return(grid_crit[which.min(grid_crit$deviance),])
+    
+    
+  }
+}
+
+gam.tune(response = "log(sev)",
+         variables = c("split","coverp","agecar","fleetc","powerc"),
+         smooth = c("ageph","lat,long"),
+         grid = tuning_grid,
+         data = mtpl_sev_training,
+         weights = mtpl_sev_training$nbrtotc)
+
+
