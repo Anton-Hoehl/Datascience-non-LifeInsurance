@@ -104,7 +104,6 @@ gam.check(sev_gam)
 post_be <- st_centroid(be_shape_sf) #this part doesn't work, without this I can't plot the fitted spatial values in the belgium map shape file
 
 
-
 be_sevfit_spatial <- ggplot(be_shape_sf) +
   geom_sf(aes(fill = sev_spatial_gam$fitted.values)) +
   ggtitle("Belgium - MTPL severity data") +
