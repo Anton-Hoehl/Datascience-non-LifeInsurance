@@ -1,53 +1,10 @@
-##----package_loading-------------------------------------------------------------------
-packages <- c("tidyverse",
-              "readr",
-              "tidymodels",
-              "readxl",
-              "gridExtra",
-              "sf")
-suppressMessages(packages <- lapply(packages, FUN = function(x) {
-  if (!require(x, character.only = TRUE)) {
-    install.packages(x)
-    library(x, character.only = TRUE)
-  }
-}))
+# Run '00_dataprep_package_loading.R' script before running this script
 
-##----data_import-----------------------------------------------------------------------
-mtpl <- read_delim(file = "Assignment.csv",
-                   delim = ",",
-                   col_names = T)
-
-inspost <- read_xls("inspost.xls",
-                    sheet = "inspost",
-                    col_names = T)
-
-str(mtpl)
-str(inspost)
-
-mtpl <- mtpl %>% left_join(inspost, by = "CODPOSS")
-
-mtpl <- mtpl %>%
-        dplyr::select(-COMMUNE) %>%
-        rename("ageph" = AGEPH,
-               "codposs" = CODPOSS,
-               "ins" = INS,
-               "lat" = LAT,
-               "long" = LONG) %>%
-        mutate_if(is.character, as.factor)
-            
 ##---------------------------------------------------------------------------
 sum(is.na(mtpl))
 
-
-mtpl <- mtpl %>%
-        mutate(sev = ifelse(nbrtotc == 0, NA, chargtot / nbrtotc))  #average claim amount calculation
-        
-
-mtpl %>% select_if(is.numeric) %>% summary()
-
 min(mtpl$ageph)
 max(mtpl$ageph)
-
 
 ##----data_viz_prep--------------------------------------------------------------
 pantone <- "#D0417E"
@@ -92,6 +49,9 @@ g_ageph <- gg.hist(mtpl, "ageph", binwidth = 2)
 g_hists <- list(g_duree, g_nbrtotan, g_nbrtotc, g_ageph)
 
 ##----dens_plots-------------------------------------------------------------------------------
+mtpl <- mtpl %>%
+  mutate(sev = ifelse(nbrtotc == 0, NA, chargtot / nbrtotc)) #average claim amount calculation
+
 g_sev <- gg.dens(mtpl %>% filter(nbrtotc > 0, sev <= 80000), "sev")     #severities over 80000 omitted
 g_sevs <- list(g_sev)
 
@@ -107,16 +67,21 @@ g_ageph_nbrtotc <-  mtpl %>%
                     geom_point(col = col) +
                     theme_bw()
 
-g_ageph_sev <-      mtpl %>% 
+g_ageph_sevfreq <-  mtpl %>% 
                     filter(nbrtotc > 0) %>%
                     group_by(ageph) %>% 
                     summarize(sev_agg = sum(sev))  %>%
                     mutate(sev_freq = sev_agg / sum(sev_agg)) %>%
                     ggplot(aes(x = ageph, y = sev_freq)) +
                     geom_point(col = col) +
-                    theme_bw()                                
+                    theme_bw()
 
-#this plot indicate we might need 4 basis functions to fit this smoother for ageph on severity
+g_ageph_logsev <- mtpl %>%
+               filter(nbrtotc > 0, sev <= 60000) %>%
+               ggplot(aes(x = ageph, y = log(sev))) +
+               geom_point(col = col) +
+               theme_bw()
+
 
 g_codposs_nbrtotc <- mtpl %>% 
                      group_by(codposs) %>% 
@@ -125,6 +90,7 @@ g_codposs_nbrtotc <- mtpl %>%
                      ggplot(aes(x = codposs, y = claim_freq)) +
                      geom_point(col = col) +
                      theme_bw()
+
 ##----spatial_data_prep----------------------------------------------------------------------
 be_shape_sf <- st_read("./shape file Belgie postcodes/npc96_region_Project1.shp", quiet = T)
 be_shape_sf <- st_transform(be_shape_sf, "+proj=longlat", "+datum=WGS84")
@@ -138,14 +104,17 @@ be_shape_sf <- be_shape_sf %>%
                          by = c("POSTCODE" = "codposs"))
 
 be_shape_sf <- be_shape_sf %>%
-               mutate(expo_pau = expo / Shape_Area) %>%
+               mutate(expo_pau = expo / Shape_Area)
 
 be_shape_sf <- be_shape_sf %>%
                mutate(expo_abin = cut(be_shape_sf$expo_pau, 
                                       breaks = quantile(be_shape_sf$expo_pau, c(0,0.2,0.8,1), na.rm = T),
                                       right = F, include.lowest = T,
                                       labels = c("low","medium","high")))
+
+
 ##----spatial_data_viz-----------------------------------------------------------------------
+
 be_expo_reg <- ggplot(be_shape_sf) +
   geom_sf(aes(fill = expo_abin)) +
   ggtitle("Belgium - relative exposure per region") +
