@@ -100,12 +100,9 @@ par(mfrow = c(2,2))
 gam.check(sev_gam)
 
 ##---Belgium map with fitted spatial effects----------------------------------------------------
-pantone <- "#D0417E"
 
-be_shape_sf <- st_read("./shape file Belgie postcodes/npc96_region_Project1.shp", quiet = T)
-be_shape_sf <- st_transform(be_shape_sf, "+proj=longlat", "+datum=WGS84")
+post_be <- st_centroid(be_shape_sf) #this part doesn't work, without this I can't plot the fitted spatial values in the belgium map shape file
 
-post_be <- sf::st_centroid(be_shape_sf) #this part doesn't work, without this I can't plot the fitted spatial values in the belgium map shape file
 
 
 be_sevfit_spatial <- ggplot(be_shape_sf) +

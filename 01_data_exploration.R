@@ -91,26 +91,6 @@ g_codposs_nbrtotc <- mtpl %>%
                      geom_point(col = col) +
                      theme_bw()
 
-##----dist_assumptions - Severity-----------------------------------------------------------------
-
-set.seed(456)
-gamma_fit <- fitdist(mtpl_sev$sev, distr = "gamma", method = "mle", lower = c(0,0))
-lnorm_fit <- fitdist(mtpl_sev$sev, distr = "lnorm", method = "mle", lower = c(0,0))
-
-g_gamma_vs_lnorm <- 
-  gg.dens(mtpl_sev, "sev") +
-  geom_function(aes(col = "gamma"), 
-                fun = dgamma, 
-                args = list(shape = gamma_fit$estimate[1],
-                            rate = gamma_fit$estimate[2]),
-                lwd = 1) +
-  geom_function(aes(col = "log normal"), 
-                fun = dlnorm, 
-                args = list(meanlog = lnorm_fit$estimate[1],
-                            sdlog = lnorm_fit$estimate[2]),
-                lwd = 1) +
-  scale_colour_manual(values = c("red","blue"))
-
 ##----spatial_data_prep----------------------------------------------------------------------
 be_shape_sf <- st_read("./shape file Belgie postcodes/npc96_region_Project1.shp", quiet = T)
 be_shape_sf <- st_transform(be_shape_sf, "+proj=longlat", "+datum=WGS84")
@@ -124,13 +104,14 @@ be_shape_sf <- be_shape_sf %>%
                          by = c("POSTCODE" = "codposs"))
 
 be_shape_sf <- be_shape_sf %>%
-               mutate(expo_pau = expo / Shape_Area) %>%
+               mutate(expo_pau = expo / Shape_Area)
 
 be_shape_sf <- be_shape_sf %>%
                mutate(expo_abin = cut(be_shape_sf$expo_pau, 
                                       breaks = quantile(be_shape_sf$expo_pau, c(0,0.2,0.8,1), na.rm = T),
                                       right = F, include.lowest = T,
                                       labels = c("low","medium","high")))
+
 
 ##----spatial_data_viz-----------------------------------------------------------------------
 
