@@ -106,7 +106,7 @@ mfolds <- function(dataset, K = 6) {
       xgboost::xgboost(
         data =  X,
         label = y,
-        nrounds = 500,
+        nrounds = 10,
         objective = "count:poisson",
         eval_metric = "poisson-nloglik",
         early_stopping_rounds = 3,
@@ -133,6 +133,8 @@ mfolds <- function(dataset, K = 6) {
   }
   
 }
+
+dpois
 
 mfolds(dataset = mtpl_training)
 
