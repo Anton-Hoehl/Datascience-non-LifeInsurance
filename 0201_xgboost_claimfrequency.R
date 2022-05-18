@@ -1,60 +1,15 @@
 
-packages <- c("data.table",
-              "dplyr",
-              "ggplot2",
-              "caret",
-              "xgboost",
-              "e1071",
-              "cowplot",
-              "Matrix",
-              "magrittr")
-suppressMessages(packages <- lapply(packages, FUN = function(x) {
-  if (!require(x, character.only = TRUE)) {
-    install.packages(x)
-    library(x, character.only = TRUE)
-  }
-}))
+# function from github: https://github.com/henckr/treeML/blob/master/treeML.Rmd
 
-poisson_deviance <- function(y, py) {
-  
-  if (y == 0) {
-    return(2*py)
-  }
-  
-  else {
-    
-    return((y * log(y / py) - (y - py)))
-    
-  }
-  
+# Poisson deviance
+dev_poiss <- function(ytrue, yhat) {
+  -2 * mean(dpois(ytrue, yhat, log = TRUE) - dpois(ytrue, ytrue, log = TRUE), na.rm = TRUE)
 }
 
-
-
-##----data-----------------------------------------------------------------------
-
-mtpl <- read_delim(file = "Assignment.csv",
-                   delim = ",",
-                   col_names = T)
-
-inspost <- read_xls("inspost.xls",
-                    sheet = "inspost",
-                    col_names = T)
-
-mtpl <- mtpl %>% left_join(inspost, by = "CODPOSS")
-
-dplyr::select()
-
-mtpl <- mtpl %>%
-  dplyr::select(-COMMUNE) %>%
-  rename(
-    "ageph" = AGEPH,
-    "codposs" = CODPOSS,
-    "ins" = INS,
-    "lat" = LAT,
-    "long" = LONG
-  ) %>%
-  mutate_if(is.character, as.factor)
+# Gamma deviance
+dev_gamma <- function(ytrue, yhat, wcase) {
+  -2 * mean(wcase * (log(ytrue/yhat) - (ytrue - yhat)/yhat), na.rm = TRUE)
+}
 
 ##----data_import-----------------------------------------------------------------------
 
@@ -76,6 +31,12 @@ mtpl_test <- testing(mtpl_split)
 # do the folds manually
 # 6 because it as denominator of nrows(mtpl)
 mfolds <- function(dataset, K = 6) {
+  
+  models <- c()
+  insample <- c()
+  outofsample <- c()
+  pred_ins <- c()
+  pred_oos <- c()
   
   # enumerate the rows and sample 1/K parts
   idx <- seq(1, nrow(dataset))
@@ -106,20 +67,27 @@ mfolds <- function(dataset, K = 6) {
       xgboost::xgboost(
         data =  X,
         label = y,
-        nrounds = 10,
+        nrounds = 1000,
         objective = "count:poisson",
         eval_metric = "poisson-nloglik",
         early_stopping_rounds = 3,
-        max_depth = 3,
+        max_depth = 2,
         eta = .15,
         verbose = 0
       )
     
+    paste("Fold Number: ", k, sep = "")
+    
+    print(varImp(m1_xgb,scale=FALSE))
+    
+    models <- c(m1_xgb, m1_xgb)
+    
     # in sample performance metrics
     Yhat <- as.numeric(stats::predict(m1_xgb, new = X))
+    pred_ins <- c(pred_ins, Yhat)
     
-    
-    print(mean(mapply(FUN = poisson_deviance, dataset[idx1,]$nbrtotc, Yhat)))
+    insample <- c(insample, dev_poiss(dataset[idx1,]$nbrtotc, Yhat))
+    print(dev_poiss(dataset[idx1,]$nbrtotc, Yhat))
     
     # out of sample performance metrics
     X_test <-
@@ -127,15 +95,29 @@ mfolds <- function(dataset, K = 6) {
     y_test <- data.matrix(dataset$nbrtotc[idx2])
     
     Yhat_test <- as.numeric(stats::predict(m1_xgb, new = X_test))
+    pred_oos <- c(pred_oos, Yhat_test)
     
-    print(mean(mapply(FUN = poisson_deviance, dataset[idx2,]$nbrtotc, Yhat_test)))
+    outofsample <- c(outofsample, dev_poiss(dataset[idx2,]$nbrtotc, Yhat_test))
+    print(dev_poiss(dataset[idx2,]$nbrtotc, Yhat_test))
 
   }
-  
+  #final <- data.frame(models, insample, outofsample)
+  #colnames(final) <- c("model", "deviance_insample", "deviance_outsample")
+  return(list(data.frame(insample, outofsample),
+              data.frame(pred_ins, pred_oos)))
 }
 
-dpois
+test <- mfolds(dataset = mtpl_training)
 
-mfolds(dataset = mtpl_training)
-
+ggplot(data = test[[1]]) + 
+    geom_line(aes(x = as.numeric(row.names(test[[1]])), y = insample, col = "red")) +
+    geom_line(aes(x = as.numeric(row.names(test[[1]])), y = outofsample, col = "green")) +
+    scale_colour_manual(name = "Data",
+                        labels = c("Out of Sample", "In Sample"), 
+                        values = c("red", "green")) + 
+    scale_x_continuous(labels=as.character(as.numeric(row.names(test[[1]]))),
+                       breaks=as.numeric(row.names(test[[1]]))) +
+    labs(x = "Fold Number", y = "Poisson Deviance", 
+         title = "6-Fold XGBoost: Claim Frequency", subtitle = "excluding variable community") +
+    theme_bw()
 

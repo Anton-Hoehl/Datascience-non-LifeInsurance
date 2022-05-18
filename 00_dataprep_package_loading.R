@@ -10,7 +10,9 @@ packages <- c("readr",
               "tidyr",
               "fitdistrplus",
               "classInt",
-              "RColorBrewer")
+              "RColorBrewer",
+              "Metrics",
+              "caret")
 suppressMessages(packages <- lapply(packages, FUN = function(x) {
   if (!require(x, character.only = TRUE)) {
     install.packages(x)
