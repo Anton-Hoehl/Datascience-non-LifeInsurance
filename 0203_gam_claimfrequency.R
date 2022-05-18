@@ -100,40 +100,60 @@ be_pred <- tibble(postcode = post_be$POSTCODE,
                   spatial_pred)
 
 #apply fisher natural breaks to create homogeneous clusters     
-n_classes <- 5
-fisher_classes <- classIntervals(var = be_pred$spatial_pred, n = n_classes, style = "fisher")
+
+n_classes <- 2:5
+AIC_nclasses_freq <- data.frame(n_classes = n_classes,
+                                AIC = vector(mode = "numeric", length = length(n_classes)))
+mtpl_n_geo <- mtpl_n %>% 
+  left_join(select(be_pred, -long, -lat), by = c("codposs" = "postcode"))
+
+for (i in 1:length(n_classes)) {
+  n <- n_classes[i]
+  
+  fisher_classes <- classIntervals(var = be_pred$spatial_pred, n = n, style = "fisher")
+  
+  mtpl_n_geo <- mtpl_n_geo %>%
+    mutate(geo = cut(
+      spatial_pred,
+      breaks = fisher_classes$brks,
+      right = F,
+      include.lowest = T,
+      dig.lab = 2
+    ))
+  
+  
+  set.seed(1234)
+  mtpl_split_geo <- initial_split(mtpl_n_geo, prop = 0.75, strata = nbrtotc)
+  mtpl_training_geo <- training(mtpl_split_geo)
+  mtpl_test_geo <- testing(mtpl_split_geo)
+  
+  set.seed(567)
+  freq_gam_geo <- gam(formula = 
+                        nbrtotc ~ agecar + sexp + fuelc + split + 
+                        fleetc + coverp + powerc + s(ageph) + geo,
+                      family = poisson(link = "log"),
+                      offset = lnexpo,
+                      data = mtpl_training_geo)
+  
+  AIC_nclasses_freq$AIC[i] <- freq_gam_geo$aic
+}
+
+n_optim <- AIC_nclasses_freq[which.min(AIC_nclasses_freq$AIC),1]
+
+fisher_classes <- classIntervals(var = be_pred$spatial_pred, n = n_optim, style = "fisher")
+
 g_fisher_freq <- plot(fisher_classes, pal = c("#F1EEF6","#980043"),
                       xlab = expression(hat(f)(long,lat)),
                       main = "Fisher natural breaks - claim frequency")
 
-be_shape_sf <- be_shape_sf %>%
-               left_join(be_pred, by = c("POSTCODE" = "postcode")) %>%
-               mutate(spatial_cluster = cut(
-                      x = spatial_pred,
-                      breaks = fisher_classes$brks,
-                      right = F, include.lowest = T,
-                      dig.lab = 2)
-                      )
-
-g_geo_freq_risk <- ggplot(be_shape_sf) +
-                      geom_sf(aes(fill = spatial_cluster), colour = NA) +
-                      ggtitle("Belgium - MTPL claim frequency") +
-                      labs(fill = "Geographical riskiness") +
-                      scale_fill_brewer(palette = "PuRd",
-                                        na.value = "White") +
-                      theme_bw()
-
-mtpl_n_geo <- mtpl_n %>% 
-          left_join(select(be_pred, -long, -lat), by = c("codposs" = "postcode"))
-          
 mtpl_n_geo <- mtpl_n_geo %>%
-          mutate(geo = cut(
-                 spatial_pred,
-                 breaks = fisher_classes$brks,
-                 right = F,
-                 include.lowest = T,
-                 dig.lab = 2
-          ))
+  mutate(geo = cut(
+    spatial_pred,
+    breaks = fisher_classes$brks,
+    right = F,
+    include.lowest = T,
+    dig.lab = 2
+  ))
 
 
 set.seed(1234)
@@ -143,12 +163,63 @@ mtpl_test_geo <- testing(mtpl_split_geo)
 
 set.seed(567)
 freq_gam_geo <- gam(formula = 
-                    nbrtotc ~ agecar + sexp + fuelc + split + 
-                    fleetc + coverp + powerc + s(ageph) + geo,
+                      nbrtotc ~ agecar + sexp + fuelc + split + 
+                      fleetc + coverp + powerc + s(ageph) + geo,
                     family = poisson(link = "log"),
                     offset = lnexpo,
                     data = mtpl_training_geo)
 
-summary(freq_gam_geo)
-par(mfrow = c(2,2))
-gam.check(freq_gam_geo)
+
+be_shape_sf <- be_shape_sf %>%
+  left_join(be_pred, by = c("POSTCODE" = "postcode")) %>%
+  mutate(spatial_cluster = cut(
+    x = spatial_pred,
+    breaks = fisher_classes$brks,
+    right = F, include.lowest = T,
+    dig.lab = 2)
+  )
+
+g_geo_freq_risk <- ggplot(be_shape_sf) +
+  geom_sf(aes(fill = spatial_cluster), colour = NA) +
+  ggtitle("Belgium - MTPL claim frequency") +
+  labs(fill = "Geographical riskiness") +
+  scale_fill_brewer(palette = "PuRd",
+                    na.value = "White") +
+  theme_bw()
+
+##----clustering policyholder age-------------------------------------------------------
+
+#extracting unique predicted values using the smoothed effect of ageph
+#count the number of each policyholder age in the dataset
+#filter 0 exposures
+
+pred_ageph <- predict(freq_ageph_gam, type = "terms", terms = "s(ageph)")
+
+dt_pred_ageph_expo <- tibble("ageph" = mtpl_training_geo$ageph, pred_ageph) %>%
+  group_by(ageph,pred_ageph) %>%
+  summarize(n_ageph = n()) %>%
+  arrange(ageph) %>%
+  filter(n_ageph != 0)
+
+#we use the evtree to create splits for the continuous variable ageph
+#the control parameters can be tuned
+
+control_pars <- 
+  evtree.control(
+    minbucket = 0.05*nrow(mtpl_training), 
+    alpha = 550,
+    maxdepth = 5
+  )
+
+freq_ageph_evtree <- 
+  evtree(
+    pred_ageph ~ ageph,
+    data = dt_pred_ageph_expo,
+    weights = n_ageph,
+    control = control_pars
+  )
+
+freq_ageph_evtree
+plot(freq_ageph_evtree)
+
+#compare with rpart decision tree
