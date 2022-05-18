@@ -6,11 +6,6 @@ dev_poiss <- function(ytrue, yhat) {
   -2 * mean(dpois(ytrue, yhat, log = TRUE) - dpois(ytrue, ytrue, log = TRUE), na.rm = TRUE)
 }
 
-# Gamma deviance
-dev_gamma <- function(ytrue, yhat, wcase) {
-  -2 * mean(wcase * (log(ytrue/yhat) - (ytrue - yhat)/yhat), na.rm = TRUE)
-}
-
 ##----data_import-----------------------------------------------------------------------
 
 set.seed(1234)
