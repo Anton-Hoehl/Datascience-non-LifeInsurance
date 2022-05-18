@@ -13,7 +13,8 @@ packages <- c("readr",
               "RColorBrewer",
               "Metrics",
               "caret",
-              "evtree")
+              "evtree", 
+              "xgboost")
 
 suppressMessages(packages <- lapply(packages, FUN = function(x) {
   if (!require(x, character.only = TRUE)) {
