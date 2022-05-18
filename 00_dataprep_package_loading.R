@@ -11,8 +11,12 @@ packages <- c("readr",
               "fitdistrplus",
               "classInt",
               "RColorBrewer",
+<<<<<<< HEAD
               "Metrics",
               "caret")
+=======
+              "evtree")
+>>>>>>> a9eda4349818a293ba30391e5e038effb8d24296
 suppressMessages(packages <- lapply(packages, FUN = function(x) {
   if (!require(x, character.only = TRUE)) {
     install.packages(x)
