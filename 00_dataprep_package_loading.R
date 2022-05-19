@@ -3,6 +3,7 @@ packages <- c("readr",
               "readxl",
               "gridExtra",
               "mgcv",
+              "gam",
               "MASS",
               "poissonreg",
               "sf",
@@ -14,7 +15,8 @@ packages <- c("readr",
               "Metrics",
               "caret",
               "evtree", 
-              "xgboost")
+              "xgboost",
+              "rpart.plot")
 
 suppressMessages(packages <- lapply(packages, FUN = function(x) {
   if (!require(x, character.only = TRUE)) {
