@@ -255,7 +255,7 @@ mtpl_sev_split <- initial_split(mtpl_sev, prop = 0.75, strata = lnsev)
 mtpl_sev_training <- training(mtpl_sev_split)
 mtpl_sev_test <- testing(mtpl_sev_split)
 
-sev_glm_classic <- glm(lnsev ~ agecar + coverp + split + ageph_class,
+sev_glm_classic <- glm(lnsev ~ agecar + coverp + split + ageph_class_s,
                        weights = nbrtotc,
                        family = gaussian(),
                        data = mtpl_sev_training)
