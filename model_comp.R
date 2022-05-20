@@ -1,4 +1,5 @@
-source('00_dataprep_package_loading.R')
+source('0203_gam_claimfrequency.R')
+source('0203_gam_severity_v2.R')
 
 mfolds <- function(dataset_freq, dataset_sev, K = 6) {
   
@@ -121,13 +122,12 @@ mfolds <- function(dataset_freq, dataset_sev, K = 6) {
     idx2 <- idx_k[, k]
     idx1 <- setdiff(seq(1, nrow(dataset_sev)), idx2)
     
-    
-    sev_glm_classic <- glm(lnsev ~ agecar + coverp + split + ageph_class,
+    sev_glm_classic <- glm(lnsev ~ agecar + coverp + split + ageph_class_s,
                            weights = nbrtotc,
                            family = gaussian(),
                            data = dataset_sev[idx1, ])
     
-    yhat_test <- exp(stats::predict(sev_glm_classic, newdata = dataset_sev[idx2, ]))
+    yhat_test <- stats::predict(sev_glm_classic, newdata = dataset_sev[idx2, ])
     ytrue_test <- dataset_sev[idx2, ]$nbrtotc
     name <- paste("Fold Number: ", k, sep = "")
 
@@ -135,24 +135,29 @@ mfolds <- function(dataset_freq, dataset_sev, K = 6) {
     print(perf)
     performance_glm_sev[k] <- perf
     
-    yhat_train <- exp(stats::predict(sev_glm_classic, newdata = dataset_sev[idx1, ]))
+    yhat_train <- stats::predict(sev_glm_classic, newdata = dataset_sev[idx1, ])
     ytrue_train <- dataset_sev[idx1, ]$lnsev
     
     ins_glm_sev[k] <- RMSE(ytrue_train, yhat_train)
     
     # xgboost severity model
     #===========================================================================
-    mtpl_tr <- xgb.DMatrix(data = dataset_sev[idx1, ] %>% 
-                             select(agecar, coverp, split, ageph_class) %>%
+    pltr <- dataset_sev[idx1, ] %>% 
+                select(c(agecar, coverp, split, ageph_class_s))
+    
+    plts <- dataset_sev[idx2, ] %>% 
+      select(c(agecar, coverp, split, ageph_class_s))
+    
+
+    mtpl_tr <- xgb.DMatrix(data =  pltr %>%
                              data.matrix,
                            info = list(
                              'label' = dataset_sev[idx1, ]$lnsev))
     
-    mtpl_ts <- xgb.DMatrix(data = dataset_freq[idx2, ] %>% 
-                             select(agecar, coverp, split, ageph_class) %>%
+    mtpl_ts <- xgb.DMatrix(data = plts %>%
                              data.matrix,
                            info = list(
-                             'label' = dataset_freq[idx2, ]$lnsev))
+                             'label' = dataset_sev[idx2, ]$lnsev))
     
     m1_xgb <-
       xgboost::xgboost(
@@ -184,7 +189,8 @@ mfolds <- function(dataset_freq, dataset_sev, K = 6) {
 
 
 # actual step of model calibration 
-results <- mfolds(dataset_freq = mtpl_n_training, dataset_sev = mtpl_n_training) %>% 
+results <- mfolds(dataset_freq = mtpl_training, 
+                  dataset_sev = mtpl_sev_training) %>% 
               pivot_longer(!c(fold_name_freq, fold_name_sev), 
                            names_to = "Model", 
                            values_to = "Performance")
@@ -210,16 +216,19 @@ plot(fpl)
 # out of sample
 oos <- results %>% filter(Model == "performance_glm_sev" | Model == "performance_xgb_sev")
 
+# plotting the RMSE of severity 
 fpl <- ggplot(data = oos, aes(x = fold_name_sev, y = Performance, 
                               col = Model, group = Model)) + 
-  scale_color_manual(values= c("performance_glm_sev"="#f9b300" ,
-                               "performance_xgb_sev"="#1f973d")) +
+  scale_color_manual(values= c("performance_glm_sev"="#1f973d" ,
+                               "performance_xgb_sev"="#d60206")) +
   geom_line() +
   labs(x = "Fold number:", y = "RMSE", 
        title = "6-Fold Severity Cross Validation") +
   theme_bw()
 
 plot(fpl)
+
+
 
 
 
