@@ -70,6 +70,7 @@ mtpl_tariff <- mtpl_tariff %>%
                   replace_na(list(sev = 0))
 
 
+
 cluster_params <- mtpl_tariff %>% 
                     select(sev_pred, freq_pred, cluster) %>% 
                     group_by(cluster) %>% 
