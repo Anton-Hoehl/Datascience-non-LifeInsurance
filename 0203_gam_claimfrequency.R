@@ -56,8 +56,6 @@ freq_spatial_gam <- mgcv::gam(formula = nbrtotc ~ s(long,lat),
                               data = mtpl_training,
                               method = "REML") 
 
-summary(freq_spatial_gam)
-plot(freq_spatial_gam, scheme = 2)
 
 ##---searching for the number of basis functions for s(long,lat)---------------------------------------
 k2 <- 1:25
@@ -121,8 +119,6 @@ freq_gam <- mgcv::gam(
 
 
 summary(freq_gam)
-par(mfrow = c(2,2))
-gam.check(freq_gam)
 
 ##---clustering the spatial effect-------------------------------------------------------------
 sf::sf_use_s2(FALSE)
@@ -272,11 +268,6 @@ freq_ageph_evtree
 
 freq_ageph_evtree$node$split
 
-plot(freq_ageph_evtree)
-
-g_ageph_nbrtotc +
-  geom_vline(xintercept = c(26,30,35,52,59))
-
 
 ##----extracting splits created by the tree and adding them to the data set used for modeling------------------------------
 
@@ -313,9 +304,6 @@ freq_glm_classic <- glm(nbrtotc ~ fuelc + split + coverp +
                         family = poisson(link = "log"),
                         data = mtpl_n_training)
 
-summary(freq_glm_classic)
-freq_glm_classic$deviance
-
 ##----k-fold cross validation of the final glm for claim frequency-----------------------------------------------------------------
 set.seed(1234)
 mtpl_n_folds <- vfold_cv(mtpl_n_training, v = 6)
@@ -344,6 +332,5 @@ all_pois_dev <- collect_metrics(freq_fits_cv, summarize = F)
 freq_glm_test_preds <- predict(freq_glm_classic2, new_data = mtpl_n_test) %>%
                        bind_cols(mtpl_n_test)
 
-poisson_log_loss(freq_glm_test_preds,
-                 estimate = .pred,
-                 truth = nbrtotc)
+
+dev_poiss(freq_glm_test_preds$nbrtotc, freq_glm_test_preds$.pred)
