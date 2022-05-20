@@ -41,10 +41,9 @@ str(inspost)
 mtpl <- mtpl %>% left_join(inspost, by = "CODPOSS")
 
 mtpl <- as_tibble(mtpl) %>%
-  dplyr::select(-COMMUNE) %>%
+  dplyr::select(-COMMUNE, -INS) %>%
   rename("ageph" = AGEPH,
          "codposs" = CODPOSS,
-         "ins" = INS,
          "lat" = LAT,
          "long" = LONG) %>%
   mutate_if(is.character, as.factor)
