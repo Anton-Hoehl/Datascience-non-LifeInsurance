@@ -1,20 +1,4 @@
-source("00_dataprep_package_loading.R")
-source("01_data_exploration.R")
-##----data resampling------------------------------------------------------------------
-
-set.seed(1234)
-
-mtpl_n <- mtpl %>% dplyr::select(-duree, -nbrtotan, -chargtot, -sev)
-
-mtpl_split <- initial_split(mtpl_n, prop = 0.75, strata = nbrtotc)
-mtpl_training <- training(mtpl_split)
-mtpl_test <- testing(mtpl_split)
-
-##----dist assumptions-------------------------------------------------------------
-#we assume the number of claims to follow a poisson distribution
-
-mean(mtpl_training$nbrtotc)
-var(mtpl_training$nbrtotc)
+source("01_dataprep.R")
 
 ##---the smoothed univariate effect of ageph---------------------------------------------
 
@@ -80,31 +64,7 @@ plot(freq_spatial_gam_list[[k_spatial]], scheme = 2)
 
 ##----step gam search for frequency-------------------------------------------------------------
 
-freq_scope_init <- gam.scope(mtpl_training,
-                             response = mtpl_training$nbrtotc,
-                             smoother = "s")
-
-freq_scope_init <- within(freq_scope_init, rm(lat,long))
-
-freq_scope_add <- list("agecar" = ~ 1 + agecar,
-                       "ageph" = ~ 1 + ageph + s(ageph, k = 6),
-                      "latlong" = ~ 1 + s(long,lat, k = 25))
-
-
-freq_scope <- c(freq_scope_init,freq_scope_add)
-                  
-
-gam_freq_lower <- mgcv::gam(formula = nbrtotc ~ 1,
-                            family = poisson(link = "log"),
-                            offset = lnexpo,
-                            data = mtpl_training,
-                            method = "REML")
-
-step_gam_freq <- step.Gam(gam_freq_lower,
-                          scope = freq_scope,
-                          direction = "both")
-
-step_gam_freq$formula
+#source("0204_freq_gam_step_search.R")
 
 ##---gam spec for claim frequency--------------------------------------------------------------
 
@@ -146,7 +106,7 @@ be_pred <- tibble(postcode = post_be$POSTCODE,
 n_classes <- 2:6
 AIC_nclasses_freq <- data.frame(n_classes = n_classes,
                                 AIC = vector(mode = "numeric", length = length(n_classes)))
-mtpl_n_geo <- mtpl_n %>% 
+mtpl_geo <- mtpl %>% 
   left_join(select(be_pred, -long, -lat), by = c("codposs" = "postcode"))
 
 for (i in 1:length(n_classes)) {
@@ -155,7 +115,7 @@ for (i in 1:length(n_classes)) {
   
   fisher_classes <- classIntervals(var = be_pred$spatial_pred, n = n, style = "fisher")
   
-  mtpl_n_geo <- mtpl_n_geo %>%
+  mtpl_geo <- mtpl_geo %>%
     mutate(geo = cut(
       spatial_pred,
       breaks = fisher_classes$brks,
@@ -166,7 +126,7 @@ for (i in 1:length(n_classes)) {
   
   
   set.seed(1234)
-  mtpl_split_geo <- initial_split(mtpl_n_geo, prop = 0.75, strata = nbrtotc)
+  mtpl_split_geo <- initial_split(mtpl_geo, prop = 0.75, strata = nbrtotc)
   mtpl_training_geo <- training(mtpl_split_geo)
   mtpl_test_geo <- testing(mtpl_split_geo)
   
@@ -190,7 +150,7 @@ g_fisher_freq <- plot(fisher_classes, pal = c("#F1EEF6","#980043"),
                       xlab = expression(hat(f)(long,lat)),
                       main = "Fisher natural breaks - claim frequency")
 
-mtpl_n_geo <- mtpl_n_geo %>%
+mtpl_geo <- mtpl_geo %>%
     mutate(geo = cut(
     spatial_pred,
     breaks = fisher_classes$brks,
@@ -201,7 +161,7 @@ mtpl_n_geo <- mtpl_n_geo %>%
 
 
 set.seed(1234)
-mtpl_split_geo <- initial_split(mtpl_n_geo, prop = 0.75, strata = nbrtotc)
+mtpl_split_geo <- initial_split(mtpl_geo, prop = 0.75, strata = nbrtotc)
 mtpl_training_geo <- training(mtpl_split_geo)
 mtpl_test_geo <- testing(mtpl_split_geo)
 
@@ -277,12 +237,12 @@ freq_ageph_evtree_nodes <- tibble("ageph" = dt_pred_ageph_expo$ageph,
                                   "nodes" = freq_ageph_evtree_pred) %>%
                            mutate(change = c(0, pmin(1, diff(nodes))))
 
-freq_ageph_splits <- unique(c(min(mtpl_n_geo$ageph),
+freq_ageph_splits <- unique(c(min(mtpl_geo$ageph),
                               freq_ageph_evtree_nodes$ageph[which(freq_ageph_evtree_nodes$change ==1)],
-                              max(mtpl_n_geo$ageph)))
+                              max(mtpl_geo$ageph)))
 
 
-mtpl_n <- mtpl_n_geo %>%
+mtpl <- mtpl_geo %>%
            mutate(ageph_class = 
                   cut(ageph,
                   breaks = freq_ageph_splits,
@@ -293,44 +253,13 @@ mtpl_n <- mtpl_n_geo %>%
 ##----specifying and calibrating the final glm for claim frequency using only factor variables-------------------------------------
 
 set.seed(1234)
-mtpl_n_split <- initial_split(mtpl_n, prop = 0.75, strata = nbrtotc)
-mtpl_n_training <- training(mtpl_n_split)
-mtpl_n_test <- testing(mtpl_n_split)
+mtpl_split <- initial_split(mtpl, prop = 0.75, strata = nbrtotc)
+mtpl_training <- training(mtpl_split)
+mtpl_test <- testing(mtpl_split)
 
 
 freq_glm_classic <- glm(nbrtotc ~ fuelc + split + coverp + 
-                          powerc + agecar + ageph_class + geo,
+                        powerc + agecar + ageph_class + geo,
                         offset = lnexpo,
                         family = poisson(link = "log"),
-                        data = mtpl_n_training)
-
-##----k-fold cross validation of the final glm for claim frequency-----------------------------------------------------------------
-set.seed(1234)
-mtpl_n_folds <- vfold_cv(mtpl_n_training, v = 6)
-
-freq_glm_spec <- poisson_reg() %>%
-  set_mode("regression") %>%
-  set_engine("glm")
-
-freq_glm_classic2 <- freq_glm_spec %>%
-                     fit(formula =
-                          nbrtotc ~ fuelc + split + coverp + 
-                          powerc + agecar + ageph_class + geo,
-                          offset = lnexpo,
-                         data = mtpl_n_training)
-
-
-freq_fits_cv <- fit_resamples(freq_glm_spec,
-                              nbrtotc ~ fuelc + split + coverp + 
-                              powerc + agecar + ageph_class + geo,
-                              offset = lnexpo,
-                              resamples = mtpl_n_folds,
-                              metrics = metric_set(poisson_log_loss))
-
-all_pois_dev <- collect_metrics(freq_fits_cv, summarize = F)
-
-freq_glm_test_preds <- predict(freq_glm_classic2, new_data = mtpl_n_test) %>%
-                       bind_cols(mtpl_n_test)
-
-
-dev_poiss(freq_glm_test_preds$nbrtotc, freq_glm_test_preds$.pred)
+                        data = mtpl_training)

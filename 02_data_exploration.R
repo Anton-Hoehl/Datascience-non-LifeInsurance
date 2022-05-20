@@ -1,9 +1,14 @@
-source("00_dataprep_package_loading.R")
+##----call package loading source-------------------------------------
+source("00_package_loading.R")
 ##---------------------------------------------------------------------------
 sum(is.na(mtpl))
 
 min(mtpl$ageph)
 max(mtpl$ageph)
+
+mtpl <- mtpl %>%
+  mutate(sev = ifelse(nbrtotc == 0, NA, chargtot / nbrtotc))   #average claim amount (severity) calculation
+
 
 ##----data_viz_prep--------------------------------------------------------------
 pantone <- "#D0417E"
@@ -32,7 +37,6 @@ gg.dens <- function(data, variable) {
     theme_bw() +
     geom_density(col = col, fill = fill, alpha = 0.5) +
     xlab(variable) +
-    xlim(0,4000) +
     ylab("density")
 }
 
@@ -48,11 +52,14 @@ g_ageph <- gg.hist(mtpl, "ageph", binwidth = 2)
 g_hists <- list(g_duree, g_nbrtotan, g_nbrtotc, g_ageph)
 
 ##----dens_plots-------------------------------------------------------------------------------
-mtpl <- mtpl %>%
-  mutate(sev = ifelse(nbrtotc == 0, NA, chargtot / nbrtotc)) #average claim amount calculation
-
-g_sev <- gg.dens(mtpl %>% filter(nbrtotc > 0, sev <= 80000), "sev")     #severities over 80000 omitted
+ 
+g_sev <- gg.dens(mtpl %>% filter(nbrtotc > 0), "sev") + xlim(0,10000)    #we can see the severity distribution is very skewed
 g_sevs <- list(g_sev)
+
+cutoff <- quantile(mtpl$sev, probs = 0.999, na.rm = T)
+
+mtpl <- mtpl %>%
+        mutate( sev = ifelse(sev > cutoff, cutoff, sev))    #we excluded claim severities higher than 82153.51 (99.9 percentile)
 
 ##----data_viz------------------------------------------------------------------------------
 g_list <- c(g_hists,g_sevs,g_bars)
@@ -89,6 +96,38 @@ g_codposs_nbrtotc <- mtpl %>%
                      ggplot(aes(x = codposs, y = claim_freq)) +
                      geom_point(col = col) +
                      theme_bw()
+
+##----distibutional asumptions for claim frequency-----------------------------------
+
+mean(mtpl_training$nbrtotc) #we assume the number of claims to follow a poisson distribution
+var(mtpl_training$nbrtotc)
+
+##----distributional asumptions for claim severity-----------------------------------------------------------------
+
+mtpl_sev <- mtpl %>% filter(sev != is.na(sev)) 
+
+set.seed(456)
+gamma_fit <- fitdist(mtpl_sev$sev, distr = "gamma", method = "mle", lower = c(0,0))
+lnorm_fit <- fitdist(mtpl_sev$sev, distr = "lnorm", method = "mle", lower = c(0,0))
+
+g_gamma_vs_lnorm <- 
+  gg.dens(mtpl_sev, "sev") +
+  xlim(0,5000) +
+  geom_function(aes(col = "gamma"), 
+                fun = dgamma, 
+                args = list(shape = gamma_fit$estimate[1],
+                            rate = gamma_fit$estimate[2]),
+                lwd = 1) +
+  geom_function(aes(col = "log normal"), 
+                fun = dlnorm, 
+                args = list(meanlog = lnorm_fit$estimate[1],
+                            sdlog = lnorm_fit$estimate[2]),
+                lwd = 1) +
+  scale_colour_manual(values = c("red","blue"))
+
+mtpl_sev <- mtpl_sev %>%
+            mutate(lnsev = log(sev))
+
 
 ##----spatial_data_prep----------------------------------------------------------------------
 be_shape_sf <- st_read("./shape file Belgie postcodes/npc96_region_Project1.shp", quiet = T)

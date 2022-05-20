@@ -7,8 +7,10 @@ mtpl <- mtpl %>%
 
 mtpl_sev <- mtpl %>% 
             filter(sev != is.na(sev)& sev < 60000) %>%
-            dplyr::select(sev,ageph,lnexpo,agecar,sexp,fuelc,split,usec,fleetc,sportc,coverp,powerc,lat,long,nbrtotc)
+            select(-lnexpo,-codposs,-chargtot,-nbrtotc,-nbrtotan)
 
+
+str(mtpl_sev)
 ##----dist_assumptions - Severity-----------------------------------------------------------------
 
 set.seed(456)
@@ -99,16 +101,79 @@ plot(sev_gam)
 par(mfrow = c(2,2))
 gam.check(sev_gam)
 
-##---Belgium map with fitted spatial effects----------------------------------------------------
+##---clustering the spatial effect-------------------------------------------------------------
+sf::sf_use_s2(FALSE)
+post_be_sev <- st_centroid(be_shape_sf)
 
-post_be <- st_centroid(be_shape_sf) #this part doesn't work, without this I can't plot the fitted spatial values in the belgium map shape file
+post_be_sev$long <- do.call(rbind, post_be_sev$geometry)[,1]
+post_be_sev$lat <- do.call(rbind, post_be_sev$geometry)[,2]
+
+vars <- c("agecar","sexp","fuelc","split","fleetc","coverp","powerc","lnexpo","ageph")
+
+for ( i in 1:length(vars)) {
+  post_be[vars[i]] <- sample(pull(mtpl[vars[i]][1]), 1146, replace = T)
+}
+
+spatial_pred <- predict(freq_gam, newdata = post_be,
+                        type = "terms", terms = "s(long,lat)")
 
 
+be_pred <- tibble(postcode = post_be$POSTCODE,
+                  long = post_be$long,
+                  lat = post_be$lat,
+                  spatial_pred)
 
-be_sevfit_spatial <- ggplot(be_shape_sf) +
-  geom_sf(aes(fill = sev_spatial_gam$fitted.values)) +
-  ggtitle("Belgium - MTPL severity data") +
-  labs(fill = "level of severity") +
-  scale_fill_gradient() +
+#apply fisher natural breaks to create homogeneous clusters     
+n_classes <- 5
+fisher_classes <- classIntervals(var = be_pred$spatial_pred, n = n_classes, style = "fisher")
+g_fisher_freq <- plot(fisher_classes, pal = c("#F1EEF6","#980043"),
+                      xlab = expression(hat(f)(long,lat)),
+                      main = "Fisher natural breaks - claim frequency")
+
+be_shape_sf <- be_shape_sf %>%
+  left_join(be_pred, by = c("POSTCODE" = "postcode")) %>%
+  mutate(spatial_cluster = cut(
+    x = spatial_pred,
+    breaks = fisher_classes$brks,
+    right = F, include.lowest = T,
+    dig.lab = 2)
+  )
+
+g_geo_freq_risk <- ggplot(be_shape_sf) +
+  geom_sf(aes(fill = spatial_cluster), colour = NA) +
+  ggtitle("Belgium - MTPL claim frequency") +
+  labs(fill = "Geographical riskiness") +
+  scale_fill_brewer(palette = "PuRd",
+                    na.value = "White") +
   theme_bw()
+
+mtpl_n_geo <- mtpl_n %>% 
+  left_join(select(be_pred, -long, -lat), by = c("codposs" = "postcode"))
+
+mtpl_n_geo <- mtpl_n_geo %>%
+  mutate(geo = cut(
+    spatial_pred,
+    breaks = fisher_classes$brks,
+    right = F,
+    include.lowest = T,
+    dig.lab = 2
+  ))
+
+
+set.seed(1234)
+mtpl_split_geo <- initial_split(mtpl_n_geo, prop = 0.75, strata = nbrtotc)
+mtpl_training_geo <- training(mtpl_split_geo)
+mtpl_test_geo <- testing(mtpl_split_geo)
+
+set.seed(567)
+freq_gam_geo <- gam(formula = 
+                      nbrtotc ~ agecar + sexp + fuelc + split + 
+                      fleetc + coverp + powerc + s(ageph) + geo,
+                    family = poisson(link = "log"),
+                    offset = lnexpo,
+                    data = mtpl_training_geo)
+
+summary(freq_gam_geo)
+par(mfrow = c(2,2))
+gam.check(freq_gam_geo)
 

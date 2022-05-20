@@ -1,41 +1,4 @@
-source("00_dataprep_package_loading.R")
-source("01_data_exploration.R")
-##----Severity_calculation--------------------------------------------------------------------------------
-
-mtpl <- mtpl %>%
-  mutate(sev = ifelse(nbrtotc == 0, NA, chargtot / nbrtotc)) #average claim amount calculation
-    
-mtpl_sev <- mtpl %>%
-  filter(sev != is.na(sev)& sev < 60000) %>%
-  mutate(lnsev = log(sev)) %>%
-  select(-lnexpo,-chargtot,-nbrtotan,-duree)
-
-##----dist_assumptions - Severity-----------------------------------------------------------------
-
-set.seed(456)
-gamma_fit <- fitdist(mtpl_sev$sev, distr = "gamma", method = "mle", lower = c(0,0))
-lnorm_fit <- fitdist(mtpl_sev$sev, distr = "lnorm", method = "mle", lower = c(0,0))
-
-g_gamma_vs_lnorm <- 
-  gg.dens(mtpl_sev, "sev") +
-  geom_function(aes(col = "gamma"), 
-                fun = dgamma, 
-                args = list(shape = gamma_fit$estimate[1],
-                            rate = gamma_fit$estimate[2]),
-                lwd = 1) +
-  geom_function(aes(col = "log normal"), 
-                fun = dlnorm, 
-                args = list(meanlog = lnorm_fit$estimate[1],
-                            sdlog = lnorm_fit$estimate[2]),
-                lwd = 1) +
-  scale_colour_manual(values = c("red","blue"))
-
-##----data resampling------------------------------------------------------------------
-
-set.seed(1234)
-mtpl_sev_split <- initial_split(mtpl_sev, prop = 0.75, strata = lnsev)
-mtpl_sev_training <- training(mtpl_sev_split)
-mtpl_sev_test <- testing(mtpl_sev_split)
+source("01_dataprep.R")
 
 ##---the smoothed univariate effect of ageph---------------------------------------------
 
@@ -103,33 +66,9 @@ plot(sev_spatial_gam_list[[k_sev_spatial]], scheme = 2)
 
 ##----step gam search for log(severity)-------------------------------------------------------------
 
+#source("0205_sev_gam_step_search.R")
 
-sev_scope_init <- gam.scope(mtpl_sev_training,
-                             response = mtpl_sev_training$nbrtotc,
-                             smoother = "s")
-
-sev_scope_init <- within(sev_scope_init, rm(lat,long,lnsev,sev))
-
-sev_scope_add <- list("agecar" = ~ 1 + agecar,
-                       "ageph" = ~ 1 + ageph + s(ageph, k = 6))
-
-
-sev_scope <- c(sev_scope_init,sev_scope_add)
-
-
-gam_sev_lower <- mgcv::gam(formula = lnsev ~ 1,
-                            family = gaussian(),
-                            weights = nbrtotc,
-                            data = mtpl_sev_training,
-                            method = "REML")
-
-step_gam_sev <- step.Gam(gam_sev_lower,
-                          scope = sev_scope,
-                          direction = "both")
-
-step_gam_sev$formula
-
-##---gam spec for claim frequency--------------------------------------------------------------
+##---gam spec for claim severity--------------------------------------------------------------
 
 sev_gam <- mgcv::gam(
   formula = lnsev ~ agecar + coverp + split + s(ageph, k = 6),
@@ -144,108 +83,108 @@ par(mfrow = c(2,2))
 gam.check(sev_gam)
 plot(sev_gam, scheme = 1)
 
-##---clustering the spatial effect-------------------------------------------------------------
-sf::sf_use_s2(FALSE)
-post_be <- st_centroid(be_shape_sf)
-post_be$long <- do.call(rbind, post_be$geometry)[,1]
-post_be$lat <- do.call(rbind, post_be$geometry)[,2]
-
-vars <- c("coverp","ageph","agecar")
-
-for ( i in 1:length(vars)) {
-  post_be[vars[i]] <- sample(pull(mtpl[vars[i]][1]), 1146, replace = T)
-}
-
-spatial_pred_sev <- predict(sev_gam, newdata = post_be,
-                        type = "terms", terms = "s(long,lat)")
-
-
-be_pred_sev <- tibble(postcode = post_be$POSTCODE,
-                  long = post_be$long,
-                  lat = post_be$lat,
-                  spatial_pred_sev)
+# ##---clustering the spatial effect-------------------------------------------------------------
+# sf::sf_use_s2(FALSE)
+# post_be <- st_centroid(be_shape_sf)
+# post_be$long <- do.call(rbind, post_be$geometry)[,1]
+# post_be$lat <- do.call(rbind, post_be$geometry)[,2]
+# 
+# vars <- c("coverp","ageph","agecar")
+# 
+# for ( i in 1:length(vars)) {
+#   post_be[vars[i]] <- sample(pull(mtpl[vars[i]][1]), 1146, replace = T)
+# }
+# 
+# spatial_pred_sev <- predict(sev_gam, newdata = post_be,
+#                         type = "terms", terms = "s(long,lat)")
+# 
+# 
+# be_pred_sev <- tibble(postcode = post_be$POSTCODE,
+#                   long = post_be$long,
+#                   lat = post_be$lat,
+#                   spatial_pred_sev)
 
 ##----apply fisher natural breaks to create homogeneous clusters of s(lat,long)---------------------------------------------   
 
-n_classes <- 2:15
-AIC_nclasses_sev <- data.frame(n_classes = n_classes,
-                                AIC = vector(mode = "numeric", length = length(n_classes)))
-mtpl_sev_geo <- mtpl_sev %>% 
-  left_join(select(be_pred_sev, -long, -lat), by = c("codposs" = "postcode"))
-
-for (i in 1:length(n_classes)) {
-  
-  n <- n_classes[i]
-  
-  fisher_classes_sev <- classIntervals(var = be_pred_sev$spatial_pred_sev, n = n, style = "fisher")
-  
-  mtpl_sev_geo <- mtpl_sev_geo %>%
-    mutate(geo = cut(
-      spatial_pred_sev,
-      breaks = fisher_classes_sev$brks,
-      right = F,
-      include.lowest = T,
-      dig.lab = 2
-    ))
-  
-  set.seed(1234)
-  mtpl_sev_geo_split <- initial_split(mtpl_sev_geo, prop = 0.75, strata = lnsev)
-  mtpl_sev_training_geo <- training(mtpl_sev_geo_split)
-  
-  sev_gam_geo <- mgcv::gam(formula = lnsev ~ coverp + 
-                             agecar + s(ageph, k = 6) + geo,
-                            weights = nbrtotc,
-                            data = mtpl_sev_training_geo,
-                            method = "REML")
-  
-  AIC_nclasses_sev$AIC[i] <- sev_gam_geo$aic
-}
-
-n_optim_sev <- AIC_nclasses_sev[which.min(AIC_nclasses_sev$AIC),1]
-
-fisher_classes_sev <- classIntervals(var = be_pred_sev$spatial_pred_sev, n = n_optim_sev, style = "fisher")
-
-g_fisher_sev <- plot(fisher_classes_sev, pal = c("#F1EEF6","#980043"),
-                      xlab = expression(hat(f)(long,lat)),
-                      main = "Fisher natural breaks - claim severity")
-
-mtpl_sev_geo <- mtpl_sev_geo %>%
-  mutate(geo = cut(
-    spatial_pred_sev,
-    breaks = fisher_classes_sev$brks,
-    right = F,
-    include.lowest = T,
-    dig.lab = 2
-  ))
-
-set.seed(1234)
-mtpl_sev_geo_split <- initial_split(mtpl_sev_geo, prop = 0.75, strata = lnsev)
-mtpl_sev_training_geo <- training(mtpl_sev_geo_split)
-
-sev_gam_geo <- mgcv::gam(formula = lnsev ~ coverp + 
-                           agecar + s(ageph, k = 6) + geo,
-                         weights = nbrtotc,
-                         data = mtpl_sev_training_geo,
-                         method = "REML")
-
-
-
-be_shape_sf <- be_shape_sf %>%
-  left_join(be_pred_sev, by = c("POSTCODE" = "postcode")) %>%
-  mutate(spatial_cluster_sev = cut(
-    x = spatial_pred_sev,
-    breaks = fisher_classes_sev$brks,
-    right = F, include.lowest = T,
-    dig.lab = 2)
-  )
-
-g_geo_sev_risk <- ggplot(be_shape_sf) +
-  geom_sf(aes(fill = spatial_cluster_sev), colour = NA) +
-  ggtitle("Belgium - MTPL claim severity") +
-  labs(fill = "Geographical riskiness") +
-  scale_fill_brewer(palette = "PuRd",
-                    na.value = "White") +
-  theme_bw()
+# n_classes <- 2:15
+# AIC_nclasses_sev <- data.frame(n_classes = n_classes,
+#                                 AIC = vector(mode = "numeric", length = length(n_classes)))
+# mtpl_sev_geo <- mtpl_sev %>% 
+#   left_join(select(be_pred_sev, -long, -lat), by = c("codposs" = "postcode"))
+# 
+# for (i in 1:length(n_classes)) {
+#   
+#   n <- n_classes[i]
+#   
+#   fisher_classes_sev <- classIntervals(var = be_pred_sev$spatial_pred_sev, n = n, style = "fisher")
+#   
+#   mtpl_sev_geo <- mtpl_sev_geo %>%
+#     mutate(geo = cut(
+#       spatial_pred_sev,
+#       breaks = fisher_classes_sev$brks,
+#       right = F,
+#       include.lowest = T,
+#       dig.lab = 2
+#     ))
+#   
+#   set.seed(1234)
+#   mtpl_sev_geo_split <- initial_split(mtpl_sev_geo, prop = 0.75, strata = lnsev)
+#   mtpl_sev_training_geo <- training(mtpl_sev_geo_split)
+#   
+#   sev_gam_geo <- mgcv::gam(formula = lnsev ~ coverp + 
+#                              agecar + s(ageph, k = 6) + geo,
+#                             weights = nbrtotc,
+#                             data = mtpl_sev_training_geo,
+#                             method = "REML")
+#   
+#   AIC_nclasses_sev$AIC[i] <- sev_gam_geo$aic
+# }
+# 
+# n_optim_sev <- AIC_nclasses_sev[which.min(AIC_nclasses_sev$AIC),1]
+# 
+# fisher_classes_sev <- classIntervals(var = be_pred_sev$spatial_pred_sev, n = n_optim_sev, style = "fisher")
+# 
+# g_fisher_sev <- plot(fisher_classes_sev, pal = c("#F1EEF6","#980043"),
+#                       xlab = expression(hat(f)(long,lat)),
+#                       main = "Fisher natural breaks - claim severity")
+# 
+# mtpl_sev_geo <- mtpl_sev_geo %>%
+#   mutate(geo = cut(
+#     spatial_pred_sev,
+#     breaks = fisher_classes_sev$brks,
+#     right = F,
+#     include.lowest = T,
+#     dig.lab = 2
+#   ))
+# 
+# set.seed(1234)
+# mtpl_sev_geo_split <- initial_split(mtpl_sev_geo, prop = 0.75, strata = lnsev)
+# mtpl_sev_training_geo <- training(mtpl_sev_geo_split)
+# 
+# sev_gam_geo <- mgcv::gam(formula = lnsev ~ coverp + 
+#                            agecar + s(ageph, k = 6) + geo,
+#                          weights = nbrtotc,
+#                          data = mtpl_sev_training_geo,
+#                          method = "REML")
+# 
+# 
+# 
+# be_shape_sf <- be_shape_sf %>%
+#   left_join(be_pred_sev, by = c("POSTCODE" = "postcode")) %>%
+#   mutate(spatial_cluster_sev = cut(
+#     x = spatial_pred_sev,
+#     breaks = fisher_classes_sev$brks,
+#     right = F, include.lowest = T,
+#     dig.lab = 2)
+#   )
+# 
+# g_geo_sev_risk <- ggplot(be_shape_sf) +
+#   geom_sf(aes(fill = spatial_cluster_sev), colour = NA) +
+#   ggtitle("Belgium - MTPL claim severity") +
+#   labs(fill = "Geographical riskiness") +
+#   scale_fill_brewer(palette = "PuRd",
+#                     na.value = "White") +
+#   theme_bw()
 
 ##----clustering policyholder age-------------------------------------------------------
 
@@ -303,13 +242,11 @@ sev_ageph_splits <- unique(c(min(mtpl_sev$ageph),
 
 
 mtpl_sev <- mtpl_sev %>%
-            mutate(ageph_class = 
+            mutate(ageph_class_s = 
                     cut(ageph,
                          breaks = sev_ageph_splits,
                          right = F,
                          include.lowest = T))
-
-glimpse(mtpl_sev)
 
 ##----specifying and calibrating the final glm for claim severity using only factor variables-------------------------------------
 
@@ -317,15 +254,3 @@ set.seed(1234)
 mtpl_sev_split <- initial_split(mtpl_sev, prop = 0.75, strata = lnsev)
 mtpl_sev_training <- training(mtpl_sev_split)
 mtpl_sev_test <- testing(mtpl_sev_split)
-
-sev_glm_classic <- glm(lnsev ~ agecar + coverp + split + ageph_class,
-                        weights = nbrtotc,
-                        family = gaussian(),
-                        data = mtpl_sev_training)
-
-summary(sev_glm_classic)
-plot(sev_glm_classic)
-
-sev_glm_classic$aic
-sev_gam$aic
-
