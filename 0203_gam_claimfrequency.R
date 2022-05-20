@@ -242,7 +242,7 @@ freq_ageph_splits <- unique(c(min(mtpl_geo$ageph),
                               max(mtpl_geo$ageph)))
 
 
-mtpl <- mtpl_geo %>%
+mtpl_final <- mtpl_geo %>%
            mutate(ageph_class = 
                   cut(ageph,
                   breaks = freq_ageph_splits,
@@ -253,15 +253,15 @@ mtpl <- mtpl_geo %>%
 ##----specifying and calibrating the final glm for claim frequency using only factor variables-------------------------------------
 
 set.seed(1234)
-mtpl_split <- initial_split(mtpl, prop = 0.75, strata = nbrtotc)
-mtpl_training <- training(mtpl_split)
-mtpl_test <- testing(mtpl_split)
+mtpl_split_final <- initial_split(mtpl_final, prop = 0.75, strata = nbrtotc)
+mtpl_training_final <- training(mtpl_split_final)
+mtpl_test_final <- testing(mtpl_split_final)
 
 
 freq_glm_classic <- glm(nbrtotc ~ fuelc + split + coverp + 
                         powerc + agecar + ageph_class + geo,
                         offset = lnexpo,
                         family = poisson(link = "log"),
-                        data = mtpl_training)
+                        data = mtpl_training_final)
 
 freq_formula_final <- freq_glm_classic$formula
