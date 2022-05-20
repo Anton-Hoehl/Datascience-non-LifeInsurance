@@ -1,5 +1,4 @@
-# Run '00_dataprep_package_loading.R' script before running this script
-
+source("00_dataprep_package_loading.R")
 ##---------------------------------------------------------------------------
 sum(is.na(mtpl))
 
@@ -57,7 +56,7 @@ g_sevs <- list(g_sev)
 
 ##----data_viz------------------------------------------------------------------------------
 g_list <- c(g_hists,g_sevs,g_bars)
-grid.arrange(grobs = g_list)
+#grid.arrange(grobs = g_list)
 
 g_ageph_nbrtotc <-  mtpl %>% 
                     group_by(ageph) %>% 
