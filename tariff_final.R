@@ -66,6 +66,8 @@ clustering <- mtpl_tariff %>%
   dplyr::summarise(avg = mean(pure_premium))
 
 
+mtpl_tariff <- mtpl_tariff %>% 
+                  replace_na(list(sev = 0))
 
 
 cluster_params <- mtpl_tariff %>% 
