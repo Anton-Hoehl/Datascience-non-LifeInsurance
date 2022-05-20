@@ -263,3 +263,5 @@ freq_glm_classic <- glm(nbrtotc ~ fuelc + split + coverp +
                         offset = lnexpo,
                         family = poisson(link = "log"),
                         data = mtpl_training)
+
+freq_formula_final <- freq_glm_classic$formula
