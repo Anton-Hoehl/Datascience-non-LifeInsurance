@@ -99,8 +99,8 @@ g_codposs_nbrtotc <- mtpl %>%
 
 ##----distibutional asumptions for claim frequency-----------------------------------
 
-mean(mtpl_training$nbrtotc) #we assume the number of claims to follow a poisson distribution
-var(mtpl_training$nbrtotc)
+mean(mtpl$nbrtotc) #we assume the number of claims to follow a poisson distribution
+var(mtpl$nbrtotc)
 
 ##----distributional asumptions for claim severity-----------------------------------------------------------------
 
