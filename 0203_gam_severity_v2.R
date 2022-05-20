@@ -157,7 +157,6 @@ plot(sev_gam, scheme = 1)
 #     dig.lab = 2
 #   ))
 # 
-# set.seed(1234)
 # mtpl_sev_geo_split <- initial_split(mtpl_sev_geo, prop = 0.75, strata = lnsev)
 # mtpl_sev_training_geo <- training(mtpl_sev_geo_split)
 # 
@@ -240,6 +239,8 @@ sev_ageph_splits <- unique(c(min(mtpl_sev$ageph),
                               sev_ageph_evtree_nodes$ageph[which(sev_ageph_evtree_nodes$change ==1)],
                               max(mtpl_sev$ageph)))
 
+sev_ageph_splits[1] <- 17 
+sev_ageph_splits[length(sev_ageph_splits)] <- 95
 
 mtpl_sev <- mtpl_sev %>%
             mutate(ageph_class_s = 
