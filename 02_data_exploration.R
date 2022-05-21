@@ -77,8 +77,7 @@ g_ageph_sevfreq <-  mtpl %>%
                     filter(nbrtotc > 0) %>%
                     group_by(ageph) %>% 
                     summarize(sev_agg = sum(sev))  %>%
-                    mutate(sev_freq = sev_agg / sum(sev_agg)) %>%
-                    ggplot(aes(x = ageph, y = sev_freq)) +
+                    ggplot(aes(x = ageph, y = sev_agg)) +
                     geom_point(col = col) +
                     theme_bw()
 
