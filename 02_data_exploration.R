@@ -160,6 +160,41 @@ be_expo_reg <- ggplot(be_shape_sf) +
                     na.value = "White") +
   theme_bw()
   
+##----relative_frequency_plots-----------------------------------------------------------------------
 
+# dataset for explanatory stuff
+my_ex <- mtpl %>% 
+  select(c(nbrtotc, split, coverp, powerc)) %>% 
+  filter(nbrtotc >= 1)
+
+
+# barplot for claim frequency in powerc classes 
+geogroup <- my_ex %>% 
+  select(c(nbrtotc, powerc)) %>% 
+  group_by(powerc, nbrtotc) %>% 
+  summarise(count = n())
+
+powerpl <- ggplot(geogroup, aes(fill=nbrtotc, y=count, x=powerc)) + 
+  geom_bar(position="fill", stat="identity")
+
+
+# barplot for claim frequency in coverp classes 
+geogroup <- my_ex %>% 
+  select(c(nbrtotc, coverp)) %>% 
+  group_by(coverp, nbrtotc) %>% 
+  summarise(count = n())
+
+coverpl <- ggplot(geogroup, aes(fill=nbrtotc, y=count, x=coverp)) + 
+  geom_bar(position="fill", stat="identity")
+
+
+# barplot for claim frequency in split classes 
+geogroup <- my_ex %>% 
+  select(c(nbrtotc, split)) %>% 
+  group_by(split, nbrtotc) %>% 
+  summarise(count = n())
+
+splitpl <- ggplot(geogroup, aes(fill=nbrtotc, y=count, x=split)) + 
+  geom_bar(position="fill", stat="identity")
 
 
