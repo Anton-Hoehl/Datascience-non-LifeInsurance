@@ -5,14 +5,13 @@ output: pdf_document
     extra_dependencies: ["math"]
 ---
 
-# Methods 
 
-## Construction of a tariff structure for a MTPL insurance product
-
+# Modeling of Claim Frequency and Severity 
+## Main Goal and Challenges
 Our goal is to build a tariff structure for a portfolio of Motor Third Party liabilities based on a set of policy holder characteristics that were presented and described in the first chapter. On a portfolio level we assume most of these characteristics tell us how “risky” a policyholder is compared to a another. We measure this individual riskiness with the total claim amount that a policy holder might cause in specified time period.
 Following risk theory where the Collective Risk Model approach is widely used, we can split the total claim amount into two components, which are claim frequency (claim count per unit of exposure) and claim severity (claim amount on one claim). This allows us to model the total claim amount per policy holder with the following relation
   
-Equation 1: $\pi_i = E[F_i]*E[S_i]$
+(1) $\pi_i = E[F_i]*E[S_i]$
   
 Where $E[F_i]$ is the expected claim frequency per unit of exposure and $E[S_i]$ is the expected claim severity. Because we assume independence we can multiply these two components and get the expected total claim amount per policy holder denoted by $\pi_i$. We call this quantity in Non-Life Insurance the Pure Premium.
 While claim frequency can be explained relatively easily by policyholder characteristics, it’s not the same case for severity, where only few factors seem to show importance. That is one of the reasons why actuaries model these components separately, because a total claim amount model wouldn’t be as precise as two separate models, that we afterwards combine together.
@@ -20,11 +19,38 @@ We call this quantity in Non-Life Insurance the Pure Premium. Actuaries tend to 
 There is a necessary step, in which we add a Risk Loading so we make sure every client is charged with a Risk Premium that also covers a claim amount which might exceed our expectations. We discuss the Risk Premium calculation in the third chapter. To fully commercialize the premium, insurance companies add costs related to the insurance policy and a profit margin on top of the Risk Premium, but we won’t touch upon this.
 
 
-\newpage
-
+## Modeling strategyy and issues with the classical approach
+Because insurance is a highly regulated business there is a need to use transparent pricing modeling techniques that are easily explainable to any kind of stakeholder like e.g., Generalized Linear Models (GLMs), which are considered industry standard. This is especially tricky to incorporate when the risk features of policyholders are continuous or spatial data. Moreover, taking a first glance at the interactions between for example age and our target variables shows that we are dealing clearly with nonlinear effects. 
+  
 ```{r fig.align='center',fig.width=5, fig.height=4, echo=FALSE, fig.cap="Frequency and Severity plotted against Age of the Policy Holder", warning=FALSE, message=FALSE}
 grid.arrange(grobs = list(g_ageph_nbrtotc,g_ageph_sevfreq))
 ```
+  
+This is where Generalized Additive Models (GAMs) come in play. With these models we can introduce smoother functions of covariates that smooth the wiggly non-linear functions to our liking. 
+Modeling strategy of this paper is motivated by (citation of Katrin’s paper on GAMs). The authors start with a GAM for claim frequency and subsequently use different “binning” methods to cluster continuous and spatial covariates to produce factor variables with few levels, so a set of used factor features can be deployed in a GLM for claim frequency and respectively claim severity.
+
+Another modeling approach is offered by the group of algorithms called gradient boosting machines or GBMs. They are part of the tree based family of models and can show extraordinary performance. 
+The Xtreme Gradient Boosting algorithm or XGB in short is one of them. 
+
+
+
+\newpage
+
+## Generalized Additive Model Approach 
+
+### Claim Frequency
+First step in any data modeling would be figuring out the distribution of the response variable, in our case the claim frequency (nbrtotc). Because we are dealing with count data we assume the response variable to follow a discrete distribution suitable for the type of data. Generali we would go for a Poison distribution, simply because of its capability to be described only by the mean. From the data set we estimated that the mean is 0.1238649 and the variance is 0.1350207. Based on these close values, we assume claim frequency follows a Poisson distribution. Because of the presence of the duration information (exposure) in our data set, we include the logarithm of exposure (lnexpo) as an offset in our model to penalize the few policyholders with a contract duration shorter than one year, and because our predictions are expressed in an one-year unit.
+
+#### Smoothed effect of the policyholder age
+Before we do an exhaustive search of the best model given our data, we look how well can the non-liner effect of the policyholder age be described by a smoother. For this smoother we use the thin plate spline which is the default basis function in gam() function of the R mgcv package.
+
+```{r fig.align='center',fig.width=6, fig.height=5, echo=FALSE, fig.cap="Smother of ageph with default number of basis functions", warning=FALSE, message=FALSE}
+plot(freq_ageph_gam)
+```
+
+
+
+
 
 \vspace{0.5cm}
 

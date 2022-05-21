@@ -52,7 +52,7 @@ ggplot(data.frame(k_values, wss_values), aes(k_values, wss_values)) +
 
 apllied_means <- kmeans(meaned, 15, nstart = 25)
 
-fviz_cluster(apllied_means, data = meaned,
+clusterplot <- fviz_cluster(apllied_means, data = meaned,
              geom = "point",
              shape = ".",
              pointsize = 0.1,

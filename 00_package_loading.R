@@ -18,7 +18,8 @@ packages <- c("readr",
               "xgboost",
               "rpart.plot",
               "kableExtra",
-              "factoextra")
+              "factoextra",
+              "insight")
 
 suppressMessages(packages <- lapply(packages, FUN = function(x) {
   if (!require(x, character.only = TRUE)) {

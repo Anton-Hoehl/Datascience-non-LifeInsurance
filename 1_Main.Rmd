@@ -23,7 +23,7 @@ bibliography: "5_1_ALIM_Papers.bib"
 
 
 ```{r setup, include=FALSE}
-
+source("tariff_final.R")
 ```
 <!-- Start Frontpage -->
 \pagenumbering{gobble}

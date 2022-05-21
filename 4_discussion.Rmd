@@ -4,5 +4,27 @@ output: pdf_document
 ---
 
 
-# Discussion
+# Construction of the Tariff Structure
+
+
+## Clustering
+
+Moving onto the final step of our approach we now want to evaluate groups of policyholder with similar riskyness. Individiual Risk loadings are then put upon these groups to calculate the final ....
+
+We used the fitted values for severity and frequency of our final model to segment the policy holders. This allows us to use the information that the models would provide when new policyholders enter the pool and need to be assigned to a riskiness group. Technically we simulate a realistic scenario when introducing our holdout data set to our models. The clustering algorithm then used is k-means. 
+
+(Explain K-Means)
+
+The grouping ultimately represents the policyholders which are most similar by predicted severity and predicted frequency. K-Means offers us a choice to select the amount of groups to segment the data into. To evaluate our final choice of the tuning parameter $K$ we compared two thoughtprocess: 
+
+1. We used the reported Within Sum of Squares $WSS$ of the algorithm which represents the total variance within the groups. Obviously this value continuously shrinks as $K$ grows. So usually a cutoff point is chosen where the marginal shrinkage of an additional group $K$ reduces the $WSS$ not in a significant manner. This Method is also referred to as the "Elbow Criterion". 
+
+2. Results from this work (cite...) on Tariff structuring working with somewhat similar variables and targets suggest around 25 groups to structure the tariffs. 
+
+The reduction of $WSS$ for $K$ values two until 20 are plotted in figure xy. Ultimately a specification for K in the middle with 15 groups was chosen, which yielded the following grouping results on the right in figure xy. 
+
+
+```{r fig.align='center',fig.width=6, fig.height=5, echo=FALSE, fig.cap="Cluster Plot", warning=FALSE, message=FALSE}
+clusterplot
+```
 
