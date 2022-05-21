@@ -8,11 +8,16 @@ output: pdf_document
 # Methods 
 
 ## Construction of a tariff structure for a MTPL insurance product
-Our goal is to build a tariff structure for a portfolio of Motor Third Party liabilities based on a set of policy holder risk that were presented and described in the first chapter. The main modeling strategy we follow in this paper is motivated by (citation of Katrin’s paper on GAMs). The authors state that because insurance is a highly regulated business there is a need to use transparent pricing modeling techniques that are easily explainable to any kind of stakeholder. This is especially tricky to incorporate when
+
+Our goal is to build a tariff structure for a portfolio of Motor Third Party liabilities based on a set of policy holder characteristics that were presented and described in the first chapter. On a portfolio level we assume most of these characteristics tell us how “risky” a policyholder is compared to a another. We measure this individual riskiness with the total claim amount that a policy holder might cause in specified time period.
+Following risk theory where the Collective Risk Model approach is widely used, we can split the total claim amount into two components, which are claim frequency (claim count per unit of exposure) and claim severity (claim amount on one claim). This allows us to model the total claim amount per policy holder with the following relation
   
-$\pi_i = E[F_i] \times E[S_i]$
+Equation 1: $\pi_i = E[F_i]*E[S_i]$
   
-Where $E[F_i]$ is the expected claim frequency and $E[S_i]$ is the expected claim severity. Because we assume independence we can multiply these two components and get the expected total claim amount per policy holder denoted by pi_i. This quantity we call in Non-Life Insurance the Pure Premium. On top of that we add a Risk Loading so we make sure every client is charged with a Risk Premium that also covers a claim amount which might exceed our expectations. We discuss the Risk Premium calculation in the third chapter. To fully commercialize the premium insurance companies add costs related to the insurance policy and a profit margin on top of the Risk Premium, but we won’t touch upon this.
+Where $E[F_i]$ is the expected claim frequency per unit of exposure and $E[S_i]$ is the expected claim severity. Because we assume independence we can multiply these two components and get the expected total claim amount per policy holder denoted by $\pi_i$. We call this quantity in Non-Life Insurance the Pure Premium.
+While claim frequency can be explained relatively easily by policyholder characteristics, it’s not the same case for severity, where only few factors seem to show importance. That is one of the reasons why actuaries model these components separately, because a total claim amount model wouldn’t be as precise as two separate models, that we afterwards combine together.
+We call this quantity in Non-Life Insurance the Pure Premium. Actuaries tend to model these components separately mainly because both components relate to the policyholder in a slightly different way. While claim frequency can be explained relatively easily by policyholder characteristics, it’s not the same case for severity, where only few factors seem to show importance. That is one of the reasons why actuaries model these components separately, because an aggregated claim amount model would not be as precise.
+There is a necessary step, in which we add a Risk Loading so we make sure every client is charged with a Risk Premium that also covers a claim amount which might exceed our expectations. We discuss the Risk Premium calculation in the third chapter. To fully commercialize the premium, insurance companies add costs related to the insurance policy and a profit margin on top of the Risk Premium, but we won’t touch upon this.
 
 
 \newpage
