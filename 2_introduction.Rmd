@@ -19,7 +19,7 @@ Insurers provide cover under adverse events for their clients. Assessing risk pr
 
 ## Exploration of the Motor Third Party Liability Dataset
 
-The data at hand is the Motor Third Party Liability Dataset. It is two dimensional structured with columns specifying features for individual clients indexed by rows. There are 20 different features and 163,647 individual rows. The following table from the assignment task identifies the short Feature names. Our Target variables for modeling are nbrtotc, the total number of claims during exposure and the severity which is calculated as $sev = chargtot / nbrtotc$. The variables which are most important for the explanatory modelling are almost all categorical or ordinal features, which makes this part somewhat easier. Only the Age of Policy Holder and Coordinates are continuous features used to explain nbrtotc and sev. 
+The data at hand is the Motor Third Party Liability Dataset. It is two dimensional structured with columns specifying features for individual clients indexed by rows. There are 20 different features and 163,647 individual rows. The following table from the assignment task identifies the short Feature names. Our Target variables for modeling are nbrtotc, the total number of claims during exposure and the severity which is calculated as $sev = chargtot / nbrtotc$. The variables which are most important for the explanatory modelling are almost all categorical or ordinal features, which makes this part somewhat easier. Only the Age of Policy Holder and Coordinates are continuous features useful to explain $nbrtotc$ and $sev$. 
 
 
 ```{r, fig.align='center',fig.cap="Feature Explanation",  echo=FALSE, warning=FALSE, message=FALSE}
@@ -50,16 +50,27 @@ knitr::kable(frame, "simple")
 
 ```
 
-Taking a closer look at the frequency of the features reveals interesting insights about our dataset. 
 
-\newpage
-
-```{r fig.align='center',fig.width=8, fig.height=10, echo=FALSE, fig.cap="Summary Plots", warning=FALSE, message=FALSE}
+Furthermore the postal code gives us information about where in Belgium the policy holder resides. The following plot Figure 1: Spatial Exposure additionally highlights how many policyholder in out set reside in which regions. Metropolitan areas and large cities are in visible contrast to less populated zones. Especially the southern part of Belgium closer to the french border, hosts very few observations. This map is of course slightly similar to the population distribution in Belgium.  
+  
+  
+```{r fig.align='center',fig.width=5, fig.height=4, echo=FALSE, fig.cap="Spatial Exposure", warning=FALSE, message=FALSE}
 source("01_dataprep.R")
-grid.arrange(grobs = g_list, ncol = 3)
+be_expo_reg
+
 ```
 
 
+\newpage
+Taking a closer look at the frequency of certain features reveals interesting insights about our dataset. Starting with the first plot in the top left of Figure 2: Summary Plots we take a look at $duree$, it shows that most policy holder were insured during the whole year. The histograms for $nbrtotan$ and $nbrtotc$ reveal then again what we know from academic theory: the absolute majority of policy holders have zero claims.The age of the car was binned into groups prior and shows that intervals with higher car ages become larger and then drop off for the highest group which includes car which are older than 10 years. Most individuals in our set pay once a year, use the car in a private context, which is not in a fleet and not a sportscar. Given that sport cars are not really represented in the data it makes sense that almos all cars have less than 110 hp. 
+
+
+```{r fig.align='center',fig.width=8, fig.height=10, echo=FALSE, fig.cap="Summary Plots", warning=FALSE, message=FALSE}
+
+grid.arrange(grobs = g_list, ncol = 3)
+```
+
+The distribution of features is very insightful into the composition of our data. Next up we would like to take a closer look at the interaction between certain variables an our target variables $nbrtotc$ and $sev$, which will be very important for the interpretation of our modeling section. 
 
 
 
