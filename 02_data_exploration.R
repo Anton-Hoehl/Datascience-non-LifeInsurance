@@ -186,6 +186,7 @@ geogroup <- my_ex %>%
 
 coverpl <- ggplot(geogroup, aes(fill=nbrtotc, y=count, x=coverp)) + 
   geom_bar(position="fill", stat="identity")
+  
 
 
 # barplot for claim frequency in split classes 
