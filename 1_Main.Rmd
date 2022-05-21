@@ -1,0 +1,138 @@
+---
+title: " "
+output:
+  pdf_document:
+    number_sections: TRUE
+    latex_engine: xelatex
+geometry: "left = 3.5cm, right = 3cm, top = 2cm, bottom = 2cm"
+fontsize: 12pt
+always_allow_html: true
+header-includes:
+  - \usepackage{float}
+  - \usepackage{sectsty}
+  - \usepackage{paralist}
+  - \usepackage{setspace}\spacing{1.5}
+  - \usepackage{fancyhdr}
+  - \usepackage{lastpage}
+  - \usepackage{dcolumn}
+  - \usepackage{natbib}\bibliographystyle{agsm}
+  - \usepackage[nottoc, numbib]{tocbibind}
+  - \usepackage[nottoc]{tocbibind}
+bibliography: "5_1_ALIM_Papers.bib"
+---
+
+
+```{r setup, include=FALSE}
+
+```
+<!-- Start Frontpage -->
+\pagenumbering{gobble}
+
+\allsectionsfont{\centering}
+\subsectionfont{\raggedright}
+\subsubsectionfont{\raggedright}
+
+
+\begin{centering}
+\vspace{3cm}
+```{r uni_logo, echo=F, out.width="40%"}
+knitr::include_graphics("1_1_img/KULeuvenlogo.png")
+```
+
+\vspace{0.5cm}
+
+\large
+{\bf Faculty of Business and Economics}
+
+\LARGE
+{\bf Data Science for non Life Insurance}
+
+\vspace{1cm}
+
+\Large
+
+\doublespacing
+{\bf Assignment 3}
+
+\vspace{1 cm}
+
+\normalsize
+\singlespacing
+By
+
+\vspace{0.5 cm}
+
+\Large
+
+{\bf Anton Höhl r90000; Juraj Škopek r90000}
+
+\vspace{1.5 cm}
+
+Lecturer: Katrien Antonio \\Teaching Assistant: xxxxx yyyyyy \\Department: LRISK 
+
+\vspace{1.5 cm}
+
+\normalsize
+22. May 2022
+
+\end{centering}
+
+<!-- End Frontpage -->
+
+\newpage
+
+<!-- Start Table of Contents -->
+
+\centering
+\raggedright
+\newpage
+\tableofcontents
+
+<!-- End Table of Contents -->
+
+<!-- Start Table of figures -->
+
+\centering
+\raggedright
+\newpage
+\listoffigures
+
+<!-- End Table of figures -->
+
+<!-- Start Chapters -->
+
+\newpage
+\pagenumbering{arabic}
+```{r intro, child = '2_introduction.Rmd'}
+```
+
+
+\newpage
+
+```{r methods, child = '3_methods.Rmd'}
+```
+
+\newpage
+
+```{r discussion, child = '4_discussion.Rmd'}
+```
+
+<!-- End Chapters -->
+
+\newpage
+
+<!-- Start Appendix, Bibliography etc. -->
+
+```{r biblio, child = '5_bibliography.Rmd'}
+```
+
+\newpage
+
+```{r appendix, child = '6_appendix.Rmd'}
+```
+
+<!-- End Appendix, Bibliography etc. -->
+
+
+
+

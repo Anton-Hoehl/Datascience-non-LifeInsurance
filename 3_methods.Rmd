@@ -1,0 +1,15 @@
+---
+title: ''
+output: pdf_document
+ pdf_document:
+    extra_dependencies: ["math"]
+---
+
+# Methods 
+
+\vspace{0.5cm}
+
+
+
+
+

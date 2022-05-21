@@ -1,0 +1,69 @@
+---
+title: ' '
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+header-includes:
+- \usepackage{float}
+- \usepackage{sectsty}
+---
+
+
+# Introduction
+
+## Overview to chosen Approach 
+
+Insurers provide cover under adverse events for their clients. Assessing risk premiums within respective tariff classes is of key issue for actuaries to ensure that insurance claims can be served. \citep{antonio_iabe_nodate,robben_assessing_2022} This work provides an analysis on the comparison of different modelling approaches to risk parameters in the case of automobile insurance, building a structure of proposed tariff groups with respectively calculated risk loadings on top of it. The methodic chapter is split into two steps due to this reason. To a certain degree the general structure of this scientific work is followed. \citep{antonio_iabe_nodate,robben_assessing_2022} In the first part we estimate the pure premium by modelling claim frequency and severity seperately to then evaluate the premium. Within  modeling we considered GLM and XGboost models and evaluated their performance to solve the task at hand. Finally in a second stage we cluster clients into groups of similar risk and  provide a method to calculate risk loadings on the group level of our tariff structure. 
+
+
+## Exploration of the Motor Third Party Liability Dataset
+
+The data at hand is the Motor Third Party Liability Dataset. It is two dimensional structured with columns specifying features for individual clients indexed by rows. There are 20 different features and 163,647 individual rows. The following table from the assignment task identifies the short Feature names. Our Target variables for modeling are nbrtotc, the total number of claims during exposure and the severity which is calculated as $sev = chargtot / nbrtotc$. The variables which are most important for the explanatory modelling are almost all categorical or ordinal features, which makes this part somewhat easier. Only the Age of Policy Holder and Coordinates are continuous features used to explain nbrtotc and sev. 
+
+
+```{r, fig.align='center',fig.cap="Feature Explanation",  echo=FALSE, warning=FALSE, message=FALSE}
+library(kableExtra)
+
+Feature <- c("ageph", "CODPOSS", "duree", "lnexpo", "nbrtotc", "chargtot", "agecar", 
+           "sexp", "fuelc", "split", "usec", "fleetc", "sportc", "coverp", "powerc")
+
+Explanation <- c("age of the policyholder", 
+  "postal code in Belgium", 
+  "exposure, fraction of the year the insured is covered",
+  "log of exposure", 
+  "total number of claims during period of exposure",
+  "total claim amount",
+  "ageofthecar: 0−1,2−5,6−10,>10", 
+  "sex of the policyholder: male or female",
+  "type of fuel: petrol or gasoil",
+  "split of the premium: monthly, once, twice, three times per year",
+  "use of the car: private or professional",
+  "car belonging to a fleet: yes or no", 
+  "sport car: yes or no",
+  "coverage: MTPL, MTPL+, MTPL+++",
+  "power of the car: < 66, 66-110, >110")
+
+frame <- data.frame(Feature, Explanation)
+
+knitr::kable(frame, "simple")
+
+```
+
+Taking a closer look at the frequency of the features reveals interesting insights about our dataset. 
+
+\newpage
+
+```{r fig.align='center',fig.width=8, fig.height=10, echo=FALSE, fig.cap="Summary Plots", warning=FALSE, message=FALSE}
+source("01_dataprep.R")
+grid.arrange(grobs = g_list, ncol = 3)
+```
+
+
+
+
+
+
+
+
+ 
