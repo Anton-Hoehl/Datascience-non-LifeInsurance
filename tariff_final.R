@@ -1,5 +1,11 @@
+#----run source codes to get input data for tarrif structure build---------------------------------------------------------------
+source("0203_gam_claimfrequency.R")
+source("0203_gam_severity_v2.R")
 
 # add the ageph_class_s groups
+
+source("00_package_loading.R")
+
 mtpl_tariff <- mtpl_final %>%
                   mutate(ageph_class_s = 
                            cut(ageph,
@@ -9,12 +15,15 @@ mtpl_tariff <- mtpl_final %>%
 
 
 # calculate fitted values 
+
+sigma <- get_sigma(sev_glm_classic)
+
+
 mtpl_tariff <- mtpl_tariff %>% 
                   mutate(freq_pred = exp(unname(stats::predict(freq_glm_classic, 
                                                                newdata = mtpl_tariff))),
                          sev_pred = exp(unname(stats::predict(sev_glm_classic, 
-                                                          newdata = mtpl_tariff)) + ((get_sigma(sev_glm_classic))^2)/2
-                         )) 
+                                                          newdata = mtpl_tariff)) + (sigma^2)/2))
 
 meaned <- as.data.frame(lapply(mtpl_tariff %>% select(c(freq_pred, sev_pred)), scale))
 
@@ -50,40 +59,15 @@ mtpl_tariff$cluster <- apllied_means$cluster
 clustering <- mtpl_tariff %>% 
   mutate(Tariff_Name = paste("Tariff ", cluster)) %>% 
   mutate(pure_premium = sev_pred * freq_pred) %>% 
-  select(c(Tariff_Name, pure_premium, cluster, chargtot)) %>%
+  select(c(Tariff_Name, pure_premium, cluster, chargtot, freq_pred, sev_pred)) %>%
   group_by(cluster, Tariff_Name) %>% 
-  summarise(count = n(),
-            Pure_Premium = mean(pure_premium),
-            charggrp = sum(chargtot),
-            p70_rp = stats::quantile(pure_premium, probs = 0.7),
-            p70_tot = count * p70_rp, 
-            diff_70 = p70_tot - charggrp,
-            p80_rp = stats::quantile(pure_premium, probs = 0.8),
-            p80_tot = n() * p80_rp, 
-            diff_80 = p80_tot - charggrp,
-            p90_rp = stats::quantile(pure_premium, probs = 0.9),
-            p90_tot = n() * p90_rp, 
-            diff_90 = p90_tot - charggrp,
-            p95_rp = stats::quantile(pure_premium, probs = 0.95),
-            p95_tot = n() * p95_rp,
-            diff_95 = p95_tot - charggrp,
-            p99_rp = stats::quantile(pure_premium, probs = 0.99),
-            p99_tot = n() * p99_rp,
-            diff_99 = p99_tot - charggrp)
+  summarise(num_ph = n(),
+            avg_freq_pred = mean(freq_pred),
+            avg_lnsev_pred = mean(log(sev_pred)),
+            Pure_Premium_ind = mean(pure_premium),
+            claims_obs = sum(chargtot))
+            
 
-
-
-# total 
-  
-quantile(wts$pure_premium, probs = 0.99)
-
-163647 * 124.5689 - sum(wts$chargtot)
-
-
-cluster_summary <- clustering %>% 
-  group_by(cluster) %>% 
-  summarise(n = n()) %>% 
-  mutate(lab = paste("N = ", n))
 
 
 ggplot(mtpl_tariff %>% mutate(Pure_Premium = sev_pred * freq_pred), aes(x = Pure_Premium)) + 
@@ -92,14 +76,7 @@ ggplot(mtpl_tariff %>% mutate(Pure_Premium = sev_pred * freq_pred), aes(x = Pure
   geom_histogram(binwidth = 5, fill =  "steelblue")
 
 
-
-ggplot(clustering, aes(x = Pure_Premium)) + 
-  geom_histogram(binwidth = 5,)
-
-
-ggplot(clustering, aes(x = pure_premium)) + geom_histogram(binwidth = 5)
-
-summary(clustering$pure_premium)
+summary(clustering$Pure_Premium_ind)
 
 # ==============================================================================
 
@@ -123,19 +100,44 @@ clustering <- mtpl_tariff %>%
   dplyr::summarise(avg = mean(pure_premium))
 
 
-
-
-
-
-
-
-
-
-
-
 cluster_params <- mtpl_tariff %>% 
                     select(sev_pred, freq_pred, cluster) %>% 
                     group_by(cluster) %>% 
                     summarise(mean_sev = mean(sev_pred),
                               mean_freq = mean(freq_pred))
 
+
+#----risk premium calculation for tariff groups----------------------------------
+#the standard deviation approach
+riskP <- function(PP,num_ph,lambda,mu,sigma,theta) {
+
+sigma_n <- sigma / sqrt(num_ph)
+EX <- exp(mu + (sigma_n^2)/2)
+DX <- (exp(sigma_n^2)-1) * exp(2*mu + sigma_n^2)
+DS <- lambda*DX+lambda*(EX^2)
+RP <- PP + theta*sqrt(DS)
+return(RP)
+
+}
+
+riskP <- Vectorize(riskP, vectorize.args = c("PP","num_ph","lambda","mu","theta"))
+
+#----final tariff tables for different theta values--------------------------------------
+tariff_structure <- list()
+
+for (i in 1:10) {
+
+theta <- 0.02*i
+  
+tariff_structure[[i]] <- tibble("Tariff_Name" = clustering$Tariff_Name) %>%
+                           mutate(PP_GLM = clustering$Pure_Premium_ind,
+                                  RP_GLM = riskP(
+                                    clustering$Pure_Premium_ind,
+                                    clustering$num_ph,
+                                    clustering$avg_freq_pred,
+                                    clustering$avg_lnsev_pred,
+                                    sigma,
+                                    theta = theta
+                                  ))
+
+}
