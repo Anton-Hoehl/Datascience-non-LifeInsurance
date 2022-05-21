@@ -56,10 +56,10 @@ g_hists <- list(g_duree, g_nbrtotan, g_nbrtotc, g_ageph)
 g_sev <- gg.dens(mtpl %>% filter(nbrtotc > 0), "sev") + xlim(0,10000)    #we can see the severity distribution is very skewed
 g_sevs <- list(g_sev)
 
-cutoff <- quantile(mtpl$sev, probs = 0.999, na.rm = T)
+#cutoff <- quantile(mtpl$sev, probs = 0.999, na.rm = T)
 
-mtpl <- mtpl %>%
-        mutate( sev = ifelse(sev > cutoff, cutoff, sev))    #we excluded claim severities higher than 82153.51 (99.9 percentile)
+#mtpl <- mtpl %>%
+        #filter(is.na(sev) | (sev < cutoff))   #we excluded claim severities higher than 82153.51 (99.9 percentile)
 
 ##----data_viz------------------------------------------------------------------------------
 g_list <- c(g_hists,g_sevs,g_bars)
