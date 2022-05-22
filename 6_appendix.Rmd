@@ -6,9 +6,15 @@ output: pdf_document
 
 
 \newpage
-
-
-```{r fig.align='center',fig.width=6, fig.height=6, echo=FALSE, fig.cap="Smoother of lat and long", warning=FALSE, message=FALSE}
-grid.arrange(grobs = list(fpl1, fpl3), ncol = 1)
-grid.arrange(grobs = list(fpl2, fpl4), ncol = 1)
+```{r fig.align='center',fig.width=6, fig.height=6, echo=FALSE, fig.cap="Cross Validation of Modeling", warning=FALSE, message=FALSE}
+grid.arrange(grobs = list(fpl1, fpl2), ncol = 1)
+grid.arrange(grobs = list(fpl3, fpl4), ncol = 1)
+```
+\newpage
+```{r fig.align='center',fig.width=4, fig.height=4, echo=FALSE, fig.cap="Evolutionary Tree Frequency", warning=FALSE, message=FALSE}
+plot(freq_ageph_evtree)
+```
+\newpage 
+```{r fig.align='center',fig.width=4, fig.height=4, echo=FALSE, fig.cap="Evolutionary Tree Severity", warning=FALSE, message=FALSE}
+plot(sev_ageph_evtree)
 ```

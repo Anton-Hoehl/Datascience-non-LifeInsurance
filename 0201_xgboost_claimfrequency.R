@@ -24,7 +24,8 @@ m1_xgb <-
 m1_pl <- xgb.ggplot.importance(
   xgb.importance(model = m1_xgb)) +
   theme(legend.position="none") + 
-  ggtitle("Variable Importance Frequency")
+  ggtitle("Variable Importance Frequency")+ 
+  theme_bw()
 
   
 
@@ -54,7 +55,8 @@ m2_xgb <-
 m2_pl <- xgb.ggplot.importance(
   xgb.importance(model = m2_xgb))  +
   theme(legend.position="none") + 
-  ggtitle("Variable Importance Severity")
+  ggtitle("Variable Importance Severity") + 
+  theme_bw()
 
 
 

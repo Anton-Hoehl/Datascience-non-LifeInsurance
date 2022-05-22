@@ -9,18 +9,44 @@ output: pdf_document
 
 ## Clustering
 
-Moving onto the final step of our approach we now want to evaluate groups of policyholder with similar riskyness. Individiual Risk loadings are then put upon these groups to calculate the final ....
-
-We used the fitted values for severity and frequency of our final model to segment the policy holders. This allows us to use the information that the models would provide when new policyholders enter the pool and need to be assigned to a riskiness group. Technically we simulate a realistic scenario when introducing our holdout data set to our models. The clustering algorithm then used is k-means. K-Means is optimal to solve our problem here because it can work with unlabeled data where it determines the similarity of observations (in our case policy holders) based on predetermined features. To determine similarity a distance metric is used to evaluate the variance in a certain group, which it tries to minimize. This will be here referred to as the Within Sum of Squares. Due to the nature of this distance metric we need to scale the two axis we need. The Scale is in our case normalised. and will be done prior to fitting and kept for the plotting the groups, but not for future calculations of the tariff related values.The grouping ultimately will represent the policyholders which are most similar by predicted severity and predicted frequency. K-Means offers us a choice to select the amount of groups to segment the data into. To evaluate our final choice of the tuning parameter $K$ we compared two thoughtprocess: 
+Moving onto the final step of our approach we now want to evaluate groups of policyholder with similar riskyness. Individiual Risk loadings are then put upon these groups to calculate the final risk premium.We used the fitted values for severity and frequency of our final model to segment the policy holders. The clustering algorithm  used is k-means. K-Means is optimal to solve our problem here because it can work with unlabeled data where it determines the similarity of observations (in our case policy holders) based on predetermined features. To determine similarity a distance metric is used to evaluate the variance in a certain group, which it tries to minimize. This will be here referred to as the Within Sum of Squares. Due to the nature of this distance metric we need to scale the two axis we need. The Scale is in our case normalised. and will be done prior to fitting and kept for the plotting the groups, but not for future calculations of the tariff related values.The grouping ultimately will represent the policyholders which are most similar by predicted severity and predicted frequency. K-Means offers us a choice to select the amount of groups to segment the data into. To evaluate our final choice of the tuning parameter $K$ we compared two thoughtprocess: 
 
 1. We used the reported Within Sum of Squares $WSS$ of the algorithm which represents the total variance within the groups. Obviously this value continuously shrinks as $K$ grows. So usually a cutoff point is chosen where the marginal shrinkage of an additional group $K$ reduces the $WSS$ not in a significant manner. This Method is also referred to as the "Elbow Criterion". 
 
-2. Results from this work (cite...) on Tariff structuring working with somewhat similar variables and targets suggest around 25 groups to structure the tariffs. 
+2. Results from this work \citep{henckaerts_boosting_2020} on Tariff structuring working with somewhat similar variables and targets suggest around 25 groups to structure the tariffs. 
 
 The reduction of $WSS$ for $K$ values two until 20 are plotted in figure xy. Ultimately a specification for K in the middle with 15 groups was chosen, which yielded the following grouping results on the right in figure xy. 
 
 
+
+
+
 ```{r fig.align='center',fig.width=6, fig.height=5, echo=FALSE, fig.cap="Cluster Plot", warning=FALSE, message=FALSE}
 clusterplot
+```
+\newpage
+
+
+## Calculation of the Premiums for segmented Policy Holders
+
+Policy holders are now clustered in groups together with respect to their expected claim frequency and expected claim severity. Within these groups or tariffs, we then calculate the Pure Premium by multiplying expected claim frequency with expected claim severity. By summing the total pure premium within every tariff, we get a total (portfolio) value of 30 063 841 EUR. Compared to the total loss of the portfolio, which is 26 593 019 EUR, the pure premium may seem like a fair price. But if we take a closer look at tariffs 4, 6, 9 and 14, we can see that the total pure premium quantity does not suffice compared to the total losses observed in these tariffs. This motivates us to add an additional risk loading to the Pure premium, so the losses inside the tariff groups are covered when the actual losses exceed the expected losses.
+Based upon multiple suggestions from the paper \citep{yang_risk_2022} we used the standard deviation premium principle with which we calculate the risk premium as:
+
+$RP_i(L_i) = E(L_i) + \phi\sqrt[]{Var(L_i)}$  
+  
+
+Where $E(L_i)$ is the expected loss per policyholder in cluster i (Pure Premium in cluster i), 
+$\phi$ is the risk parameter and $\phi\sqrt[]{Var(L_i)}$ is the risk loading. The choice of the risk parameter is up to us. We chose to calculate the risk premium for three levels of risk parameters ϕ_1 = 0.02 as low risk, ϕ_2 = 0.06 as medium risk, ϕ_3 = 0.15 as high risk.
+
+
+```{r fig.align='center',fig.width=6, fig.height=5, echo=FALSE, fig.cap="Loadings", warning=FALSE, message=FALSE}
+knitr::kable(tariff_structure[[1]], format="latex", booktabs=TRUE) %>% 
+  kable_styling(latex_options="scale_down")
+
+knitr::kable(tariff_structure[[2]], format="latex", booktabs=TRUE) %>% 
+  kable_styling(latex_options="scale_down")
+
+knitr::kable(tariff_structure[[3]], format="latex", booktabs=TRUE) %>% 
+  kable_styling(latex_options="scale_down")
 ```
 

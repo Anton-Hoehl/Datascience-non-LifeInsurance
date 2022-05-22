@@ -31,12 +31,12 @@ meaned <- as.data.frame(lapply(mtpl_tariff %>% select(c(freq_pred, sev_pred)), s
 
 
 
-# function to compute total within-cluster sum of square
+# compute wss
 wss <- function(df, k, nstart=25) {
   kmeans(df, k, nstart = nstart)$tot.withinss
 }
 
-# Compute and plot wss for k = 2 to k = 20
+# plot wss for k = 2 to k = 20
 k_values <- 2:20
 set.seed(42)
 # extract wss for 2-20 clusters

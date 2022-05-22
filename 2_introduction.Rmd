@@ -9,19 +9,16 @@ header-includes:
 - \usepackage{sectsty}
 ---
 
-
-
 # Introduction
 
-Insurers provide cover under adverse events for their clients. Assessing risk premiums within respective tariff classes is of key issue for actuaries to ensure that insurance claims can be served. \citep{henckaerts_boosting_2020} This work provides an analysis on the comparison of different modelling approaches to risk parameters in the case of automobile insurance, building a structure of proposed tariff groups with respectively calculated risk loadings on top of it. The methodic chapter is split into two steps due to this reason. To a certain degree the general structure of this scientific work is followed. \citep{henckaerts_boosting_2020}  In the first part we estimate the pure premium by modelling claim frequency and severity separately to then evaluate the premium. Within  modeling we considered GLM and XGboost models and evaluated their performance to solve the task at hand. Finally in a second stage we cluster clients into groups of similar risk and  provide a method to calculate risk loadings on the group level of our tariff structure. 
-
+Insurers provide cover under adverse events for their clients. Assessing risk premiums within respective tariff classes is of key issue for actuaries to ensure that insurance claims can be served. This work provides an analysis on the comparison of different modelling approaches to risk parameters in the case of automobile insurance, building a structure of proposed tariff groups with respectively calculated risk loadings on top of it. The methodic chapter is split into two steps due to this reason. To a certain degree the general structure of this scientific work is followed. \citep{henckaerts_boosting_2020} In the first part we estimate the pure premium by modelling claim frequency and severity separately to then evaluate the premium. Within modeling we considered GLM and XGboost models and evaluated their performance to solve the task at hand. Finally in a second stage we cluster clients into groups of similar risk and provide a method to calculate risk loadings on the group level of our tariff structure.
+The original code used to evaluate and calculate all values and visualize plots can be found on Github: <https://github.com/Anton-Hoehl/Datascience-non-LifeInsurance.git>
 
 ## Exploration of the Motor Third Party Liability Dataset
 
-The data at hand is the Motor Third Party Liability Dataset. It is two dimensional structured with columns specifying features for individual clients indexed by rows. There are 20 different features and 163,647 individual rows. The following table from the assignment task identifies the short Feature names. Our Target variables for modeling are nbrtotc, the total number of claims during exposure and the severity which is calculated as $sev = chargtot / nbrtotc$. The variables which are most important for the explanatory modelling are almost all categorical or ordinal features, which makes this part somewhat easier. Only the Age of Policy Holder and Coordinates are continuous features useful to explain $nbrtotc$ and $sev$. 
+The data at hand is the Motor Third Party Liability Dataset. It is two dimensional structured with columns specifying features for individual clients indexed by rows. There are 20 different features and 163,647 individual rows. The following table from the assignment task identifies the short Feature names. Our Target variables for modeling are nbrtotc, the total number of claims during exposure and the severity which is calculated as $sev = chargtot / nbrtotc$. The variables which are most important for the explanatory modelling are almost all categorical or ordinal features, which makes this part somewhat easier. Only the Age of Policy Holder and Coordinates are continuous features useful to explain $nbrtotc$ and $sev$.
 
 \newpage
-
 
 ```{r, fig.align='center',fig.cap="Feature Explanation",  echo=FALSE, warning=FALSE, message=FALSE}
 Feature <- c("ageph", "CODPOSS", "duree", "lnexpo", "nbrtotc", "chargtot", "agecar", 
@@ -49,20 +46,16 @@ knitr::kable(frame, "simple")
 
 ```
 
-
-Furthermore the postal code gives us information about where in Belgium the policy holder resides. The following plot Figure 1: Spatial Exposure additionally highlights how many policyholder in out set reside in which regions. Metropolitan areas and large cities are in visible contrast to less populated zones. Especially the southern part of Belgium closer to the french border, hosts very few observations. This map is of course slightly similar to the population distribution in Belgium.  
+Furthermore the postal code gives us information about where in Belgium the policy holder resides. The following plot Figure 1: Spatial Exposure additionally highlights how many policyholder in out set reside in which regions. Metropolitan areas and large cities are in visible contrast to less populated zones. Especially the southern part of Belgium closer to the french border, hosts very few observations. This map is of course slightly similar to the population distribution in Belgium.
 
 \newpage
-  
-  
+
 ```{r fig.align='center',fig.width=6, fig.height=5, echo=FALSE, fig.cap="Spatial Exposure", warning=FALSE, message=FALSE}
 be_expo_reg
 
 ```
 
-
-Taking a closer look at the frequency of certain features reveals interesting insights about our dataset. Starting with the first plot in the top left of Figure 2: Summary Plots we take a look at $duree$, it shows that most policy holder were insured during the whole year. The histograms for $nbrtotan$ and $nbrtotc$ reveal then again what we know from academic theory: the absolute majority of policy holders have zero claims. The variable $totan$ represents the number of claims scaled on the timeframe of a year. This is done via the variable $duree$ representing the proportion of the year during which the policy holder was actually insured.  The age of the car was binned into groups prior and shows that intervals with higher car ages become larger and then drop off for the highest group which includes car which are older than 10 years. Most individuals in our set pay once a year, use the car in a private context, which is not in a fleet and not a sportscar. Given that sport cars are not really represented in the data it makes sense that almos all cars have less than 110 hp. 
-
+Taking a closer look at the frequency of certain features reveals interesting insights about our dataset. Starting with the first plot in the top left of Figure 2: Summary Plots we take a look at $duree$, it shows that most policy holder were insured during the whole year. The histograms for $nbrtotan$ and $nbrtotc$ reveal then again what we know from academic theory: the absolute majority of policy holders have zero claims. The variable $totan$ represents the number of claims scaled on the timeframe of a year. This is done via the variable $duree$ representing the proportion of the year during which the policy holder was actually insured. The age of the car was binned into groups prior and shows that intervals with higher car ages become larger and then drop off for the highest group which includes car which are older than 10 years. Most individuals in our set pay once a year, use the car in a private context, which is not in a fleet and not a sportscar. Given that sport cars are not really represented in the data it makes sense that almos all cars have less than 110 hp.
 
 ```{r fig.align='center',fig.width=8, fig.height=10, echo=FALSE, fig.cap="Summary Plots", warning=FALSE, message=FALSE}
 g_list_s <- list(g_list[[1]], g_list[[2]], g_list[[3]], 
@@ -73,15 +66,9 @@ grid.arrange(grobs = g_list_s, ncol = 3)
 
 \newpage
 
-The distribution of features is very insightful into the composition of our data. Next up we would like to take a closer look at the interaction between certain variables and one of our target variables $nbrtotc$ , which will be interesting background information when evaluating the impact of these variables on the target. For these plots we cut off the 0 class because otherwise differences would be barely visible. Looking at thes columns this way reveals for tendencies in higher powered cars to on average have higher claims. On the contrary somehow customers which buy more expensive insurance products tend to categorize with less claims. One of the noteworthy but  slightly irrational findings is that there seems to be also a connection between the frequency of payment and claim frequency. 
+The distribution of features is very insightful into the composition of our data. Next up we would like to take a closer look at the interaction between certain variables and one of our target variables $nbrtotc$ , which will be interesting background information when evaluating the impact of these variables on the target. For these plots we cut off the 0 class because otherwise differences would be barely visible. Looking at thes columns this way reveals for tendencies in higher powered cars to on average have higher claims. On the contrary somehow customers which buy more expensive insurance products tend to categorize with less claims. One of the noteworthy but slightly irrational findings is that there seems to be also a connection between the frequency of payment and claim frequency.
 
 ```{r fig.align='center',fig.width=6, fig.height=5, echo=FALSE, fig.cap="Relative Frequency Plots", warning=FALSE, message=FALSE}
 
 grid.arrange(grobs = list(powerpl, coverpl, splitpl), ncol = 2)
 ```
-
-
-
-
-
- 

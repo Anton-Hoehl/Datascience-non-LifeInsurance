@@ -8,10 +8,10 @@ output: pdf_document
 
 # Modeling of Claim Frequency and Severity 
 ## Main Goal and Challenges
-Our goal is to build a tariff structure for a portfolio of Motor Third Party liabilities based on a set of policy holder characteristics that were presented and described in the first chapter. On a portfolio level we assume most of these characteristics tell us how “risky” a policyholder is compared to a another. We measure this individual riskiness with the total claim amount that a policy holder might cause in specified time period.
+Our goal is to build a tariff structure for a portfolio of a Motor Third Party liabilities based on a set of policy holder characteristics that were presented and described in the first chapter. On a portfolio level we assume most of these characteristics tell us how “risky” a policyholder is compared to a another. We measure this individual riskiness with the total claim amount that a policy holder might cause in specified time period.
 Following risk theory where the Collective Risk Model approach is widely used, we can split the total claim amount into two components, which are claim frequency (claim count per unit of exposure) and claim severity (claim amount on one claim). This allows us to model the total claim amount per policy holder with the following relation
   
-(1) $\pi_i = E[F_i]*E[S_i]$
+(1) $E[L_i] = E[F_i]*E[S_i]$
   
 Where $E[F_i]$ is the expected claim frequency per unit of exposure and $E[S_i]$ is the expected claim severity. Because we assume independence we can multiply these two components and get the expected total claim amount per policy holder denoted by $\pi_i$. We call this quantity in Non-Life Insurance the Pure Premium.
 While claim frequency can be explained relatively easily by policyholder characteristics, it’s not the same case for severity, where only few factors seem to show importance. That is one of the reasons why actuaries model these components separately, because a total claim amount model wouldn’t be as precise as two separate models, that we afterwards combine together.
@@ -27,21 +27,30 @@ grid.arrange(grobs = list(g_ageph_nbrtotc,g_ageph_sevfreq))
 ```
 ### Generalized Additive Models
 This is where Generalized Additive Models (GAMs) come in play. With these models we can introduce smoother functions of covariates that smooth the wiggly non-linear functions to our liking. 
-Modeling strategy of this paper is motivated by (citation of Katrin’s paper on GAMs). The authors start with a GAM for claim frequency and subsequently use different “binning” methods to cluster continuous and spatial covariates to produce factor variables with few levels, so a set of used factor features can be deployed in a GLM for claim frequency and respectively claim severity.
+Modeling strategy of this paper is motivated by \citep{henckaerts_boosting_2020}. The authors start with a GAM for claim frequency and subsequently use different “binning” methods to cluster continuous and spatial covariates to produce factor variables with few levels, so a set of used factor features can be deployed in a GLM for claim frequency and respectively claim severity.
 
 ### Xtreme Gradient Boosting
-Another modeling approach is offered by the group of algorithms called gradient boosting machines or GBMs. They are part of the tree based family of models and can show extraordinary predictive performance. During the modeling process we care a lot about bias and variance of our model. Boosting machines solve this in a unique way by employing an ensemble of so called weaker learners. These could be in a tree context very shallow decision trees, usually not incorporating more than 2 or 3 splits. Their properties are usually to have low variance due to beeing very shallow but also incorporate higher bias due to the same reason. To consequentially also reduce the bias a sequential algorithm then re samples the data, putting a higher weight on larger errors in previous iterations. Lastly this leaves a risk of overfitting the data and resulting in a poor out of sample performance. This is where Xtreme Gradient Boosting or XGB comes into play. Additionally to the sampling of rows the XGB Algorithm is also able to sample columns similarly to random forests. This makes Xtreme Gradient Boosting extremely interesting to compare performances to in our case. 
+Another modeling approach is offered by the group of algorithms called gradient boosting machines or GBMs. They are part of the tree based family of models and can show extraordinary predictive performance. During the modeling process we care a lot about bias and variance of our model. Boosting machines solve this in a unique way by employing an ensemble of so called weaker learners. These could be in a tree context very shallow decision trees, usually not incorporating more than 2 or 3 splits. Their properties are usually to have low variance due to beeing very shallow but also incorporate higher bias due to the same reason. To consequentially also reduce the bias a sequential algorithm then re samples the data, putting a higher weight on larger errors in previous iterations. Lastly this leaves a risk of overfitting the data and resulting in a poor out of sample performance. This is where Xtreme Gradient Boosting or XGB comes into play. Additionally to the sampling of rows the XGB Algorithm is also able to sample columns similarly to random forests. This makes Xtreme Gradient Boosting extremely interesting to use as a benchmark in our case. 
 
 
 \newpage
 
 ## Generalized Additive Model Approach 
 
-### Claim Frequency
-First step in any data modeling would be figuring out the distribution of the response variable, in our case the claim frequency (nbrtotc). Because we are dealing with count data we assume the response variable to follow a discrete distribution suitable for the type of data. Generali we would go for a Poison distribution, simply because of its capability to be described only by the mean. From the data set we estimated that the mean is 0.1238649 and the variance is 0.1350207. Based on these close values, we assume claim frequency follows a Poisson distribution. Because of the presence of the duration information (exposure) in our data set, we include the logarithm of exposure (lnexpo) as an offset in our model to penalize the few policyholders with a contract duration shorter than one year, and because our predictions are expressed in an one-year unit.
+### Distributional assumptions
+First step in any data modeling would be figuring out the distribution of the response variable. In the case of claim frequency (nbrtotc), we are dealing with count data we assume the response variable to follow a discrete distribution suitable for the type of data. Generally we would go for a Poison distribution, simply because of its capability to be described only by the mean. From the data set we estimated that the mean is 0.1238649 and the variance is 0.1350207. Based on these close values, we assume claim frequency follows a Poisson distribution. Because of the presence of the duration information (exposure) in our data set, we include the logarithm of exposure (lnexpo) as an offset in our model to penalize the few policyholders with a contract duration shorter than one year, and because our predictions are expressed in an one-year unit.
+  
+According to \citep{henckaerts_boosting_2020}, when modeling claim severity, the usual approach is to use a gamma or a log-normal distribution for the response variable. Instead of doing a totally pure subjective choice for the distribution of severity, we estimate parameters for both distributions and perform a graphical comparison. We plot both the gamma and log-normal distributions with the estimated parameters and choose the closest fit to the empirical density estimated from the data. The results is that we choose the log-normal distribution.
 
+```{r fig.align='center',fig.width=4, fig.height=4, echo=FALSE, fig.cap="Gamma vs. Lognormal", warning=FALSE, message=FALSE}
+plot(g_gamma_vs_lnorm)
+```
+  
+The log-normal distribution doesn’t belong to the exponential family, so we model the natural logarithm of the severity and use a identity link function in the GAM, which means we model the logarithm of severity assuming a normal distribution. Because we model severity, which is the average claim amount per policy, we include the number of claims (claim frequency) as a weight in the GAM.
+  
+  
 #### Univariate smoother of the policyholder age
-Before we dive into an exhaustive feature selection process, we look how well can the non-liner effect of the policyholder age be described by a univariate smoother. We predict the claim frequency only just with the policyholder age. For this smoother we use the thin plate spline which is the default basis function in gam() function of the R mgcv package. For the estimation of the smoothing parameters, we use the mixed model approach via restricted maximum likelihood (REML). For the link function we use the natural logarithm.
+Before we dive into an exhaustive feature selection process, we look how well can the non-liner effect of the policyholder age be described by a univariate smoother. We predict the claim frequency only just with the policyholder age. For this smoother we use the thin plate spline which is the default basis function in gam() function of the R mgcv package. For the estimation of the smoothing parameters, we use the mixed model approach via restricted maximum likelihood (REML). For the link function we use the natural logarithm. We repeat the same process for claim severity.
 
 ```{r fig.align='center',fig.width=4, fig.height=4, echo=FALSE, fig.cap="Smother of ageph", warning=FALSE, message=FALSE}
 plot(freq_ageph_gam)
@@ -57,28 +66,69 @@ plot(freq_spatial_gam, scheme = 2)
 ```
 
 Again, we tried different values for k. The minimum AIC value of the bivariate smoother was obtained with k = 25, with the value of the smoothing parameter chosen by the function. Output indicates statistical significance of the smoother.
+We also investigated the significance of this smoother in the case of claim severity. Based on a graphical visualization of the smoother against the coordinates, we decided not to include these variables in the claim severity model. We could see some co-interactions that set the higher risks to reside in the lower part of Belgium (Wallonia) and the lower risks in the upper part of Belgium (Flanders), which we couldn’t explain.
 
 #### Exhaustive GAM search for claim frequency  
-We now perform an exhaustive search for feature selection based on the minimal AIC value to find our final GAM for claim frequency. Because we don’t have more continuous variables in our data set and we don’t want to include interactions between factor and continuous variables, no more than the previously introduced smoothed functions are needed in the model. We also exclude variables chargtot and nbrtotan in the step search. From the set of candidate features, the step procedure yields the following model
+We now perform an exhaustive search for feature selection based on the minimal AIC value to find our final GAM for claim frequency and severity. Because we don’t have more continuous variables in our data set and we don’t want to include interactions between factor and continuous variables, no more than the previously introduced smoothed functions are needed in the model. We also exclude variables chargtot and nbrtotan in the step search. From the set of candidate features, the step procedure yields the following model for claim frequency
 
 $\log(E[nbrtotc]) = \log(duree) +\beta_0 + \beta_1fuelc_{petrol} + \beta_2split_{once}+ \beta_3split_{thrice}+ \beta_4split_{thrice}+ \beta_5coverp_{MTPL+}+ \beta_6coverp_{MTPL+++}+ \beta_7powerc_{>110}+ \beta_8powerc_{66-110}+ \beta_9agecar_{0-1}+ \beta_{10}agecar_{2-5}+ \beta_{11}agecar{6-10}+ f_1(ageph)+ f_2(long, lat)$
   
-Hello this is some text before the formula. 
+And the following model for claim severity
   
 $E[\log(sev)] = \beta_0 + \beta_1agecar_{0-1} + \beta_2agecar_{2-5}+ \beta_3agecar_{6-10}+ \beta_4coverp_{MTPL+}+ \beta_5coverp_{MTPL+++}+ \beta_6split_{once}+ \beta_7split_{thrice}+ \beta_8split_{twice}+ f_1(ageph)$
 
+  
+### Binning the smoother of latitude and longitude
+In this part we use the fisher natural breaks method to create homogeneous clusters of the smoother of latitude and longitude from the final GAM. This method is also called K-means clustering, and we discuss this in more depth in chapter 3, where we segment policyholders based on their similarity with regard to predicted frequency and predicted severity.
+This is an unsupervised learning method where we only specify the data we want to segment and the number of bins. After trying multiple number of bins, we concluded to use six bins. The resulting levels were added to the dataset as a factor variable named geo.
+
+
+```{r fig.align='center',fig.width=4, fig.height=4, echo=FALSE, fig.cap="Fisher Natural Breaks - Claim Frequency", warning=FALSE, message=FALSE}
+plot(fisher_classes, pal = c("#F1EEF6","#980043"),
+                      xlab = expression(hat(f)(long,lat)),
+                      main = "Fisher natural breaks - claim frequency")
+```
+
+```{r fig.align='center',fig.width=4, fig.height=4, echo=FALSE, fig.cap="Belgium - MTPL Claim Frequency", warning=FALSE, message=FALSE}
+plot(g_geo_freq_risk)
+```
+
+### Binning the age of policyholders
+
+We now focus on creating clusters of policyholder age based on the predicted values of claim frequency and claim severity by only one term, which is the smoother function of policyholder age from both GAMs. To implement this, we need to introduce a different algorhithm from the Fisher natural breaks or K-means. Because these methods can result in groups that wouldn’t be consecutive and we need that for an ordinal variable, like the policyholder age. We propose to use a tree-based method like the evolutionary tree to create consecutive groups of policyholder ages, where we minimalize the following expression.
+$n*MSE + \alpha*complexity$
+where 
+$\alpha$ is the tuning parameter  
+$MSE = \frac{\sum_{i = min(ageph)}^{max(ageph)}\omega_{ageph_i}(\hat{f}(ageph_i)-\hat{f}^b(ageph_i))^2}{\sum_{i = min(ageph)}^{max(ageph)}\omega_{ageph_i}}$
+  
+There are additional control parameters in the evolutionary tree function from the R package evtree that have to be set in order to get desirable results. 
+We set the minimum sum of weights in a terminal node to be 5 % of the training data set (122 728 rows for frequency, 687 rows for severity). The alpha parameter to 450 in frequency, 70 in severity. Maximum depth of the tree to 3 in frequency, 4 in severity and the minimum sum of weights in a node in order to be considered for splitting to 13 000 in frequency and 1400 in severity. The number of trees in the population to 500 for both models. Both Evolutionary Trees can be found in the chapter 6 Appendix. From the resulting clusters we created the new factor variables ageph_class for claim frequency and ageph_class_s for severity. 
+  
+### From GAMs to GLMs
+
+After binning the continuous variables age policy holder, latitude and longitude, we propose the final GLM specification for both frequency  and severity respectively. 
+  
+$\log(E[nbrtotc]) = \log(duree) +\beta_0 + \beta_1fuelc_{petrol} + \beta_2split_{once}+ \beta_3split_{thrice}+ \beta_4split_{thrice}+ \beta_5coverp_{MTPL+}+ \beta_6coverp_{MTPL+++}+ \beta_7powerc_{>110}+ \beta_8powerc_{66-110}+ \beta_9agecar_{0-1}+ \beta_{10}agecar_{2-5}+ \beta_{11}agecar{6-10}+ \beta_{12}ageph\_class{[26-30)}+ \beta_{13}ageph\_class{[30-35)}+ \beta_{13}ageph\_class{[35-65)}+ \beta_{14}ageph\_class{[65-95]}+ \beta_{15}geo{[-0.28--0.14)}+ \beta_{15}geo{[-0.14--0.032}+ \beta_{16}geo{[-0.032-0.071)}+ \beta_{17}geo{[0.071-0.2)}+ \beta_{18}geo{[0.2-0.34)}$
+  
+  
+Vice versa for the severity: 
+  
+  
+$E[\log(sev)] = \beta_0 + \beta_1agecar_{0-1} + \beta_2agecar_{2-5}+ \beta_3agecar_{6-10}+ \beta_4coverp_{MTPL+}+ \beta_5coverp_{MTPL+++}+ \beta_6split_{once}+ \beta_7split_{thrice}+ \beta_8split_{twice} + \beta_{9}ageph\_class\_s{[25-29)}+ \beta_{10}ageph\_class\_s{[29-43)}+ \beta_{11}ageph\_class\_s{[43-66)}+ \beta_{12}ageph\_class\_s{[66-72]}+ \beta_{13}ageph\_class\_s{[72-95]}$
+  
 
 ## Xtreme Gradient Boosting Approach
 
-The Xtreme gradient Boosting algorithm can help us in two different ways for further analysis. First of all we use it to evaluate whether it asssigns similar explanatory power to the variables chosen in our final GAM. To do that we take a look at the produced variable importance plots by the model. We do this each one time for frequency and severity. We can see the following in the plots that the variables show a similar ordering with regard to the importance as the final chosen GLM. 
+The Xtreme gradient Boosting algorithm can help us in two different ways for further analysis. First of all we use it to evaluate whether it asssigns similar explanatory power to the variables chosen in our final GAM. To do that we take a look at the produced variable importance plots by the model. We do this each one time for frequency and severity. We can see the following in the plots that the variables show a similar ordering with regard to the importance as the final chosen GLM. This reconfirms the choices of our model.  
 
+\newpage
 
 ```{r fig.align='center',fig.width=5, fig.height=5, echo=FALSE, fig.cap="Variable Importance", warning=FALSE, message=FALSE}
 grid.arrange(grobs = list(m1_pl,m2_pl))
 ```
 
 
-The final fitted model from our GLM Approach was also benchmarked against an Xtreme Gradient Boosting model specification. To achive comparability we used the same variables for claim frequency and severity modeling. Engineered features are also taken into account using the same levels. The idea is to plot the performance of both model specifications the GAM and XGB as well for frequency and severity for their respective in and out of sample performances across 6 folds of data. The results of this analysis can be found in the appendix under the following PLOT as the plots take up quite some space. In summary we could see that even variability in the underlying data (across folds) led to similar out and in sample variance of performance. This could hint that the variability in the training sets effecte the predictive performance of both algorithms in a similar manner. Generally speaking the difference in Poisson Deviance between the XGB and GAM is nearly non existend and performed similarly to the results of the following PAPER \citep{}
+The final fitted model from our GLM Approach was also benchmarked against an Xtreme Gradient Boosting model specification. To achive comparability we used the same variables for claim frequency and severity modeling. Engineered features are also taken into account using the same levels. The idea is to plot the performance of both model specifications the GAM and XGB as well for frequency and severity for their respective in and out of sample performances across 6 folds of data. The results of this analysis can be found in the appendix under the Performance plots for the Poisson deviance and RMSE as the plots take up quite some space. In summary we could see that even variability in the underlying data (across folds) led to similar out and in sample variance of performance. This could hint that the variability in the training sets effect the predictive performance of both algorithms in a similar manner. Generally speaking the difference in Poisson Deviance between the XGB and GAM is nearly non existent and performed similarly to the results of the performace of \citep{henckaerts_boosting_2020} \citep{}
 
 
 

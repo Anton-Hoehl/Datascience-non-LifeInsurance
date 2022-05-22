@@ -19,7 +19,6 @@ header-includes:
   - \usepackage[nottoc, numbib]{tocbibind}
   - \usepackage[nottoc]{tocbibind}
 bibliography: "combined.bib"
-nocite: '@*'
 ---
 
 
