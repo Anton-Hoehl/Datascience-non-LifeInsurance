@@ -13,7 +13,7 @@ Moving onto the final step of our approach we now want to evaluate groups of pol
 
 1. We used the reported Within Sum of Squares $WSS$ of the algorithm which represents the total variance within the groups. Obviously this value continuously shrinks as $K$ grows. So usually a cutoff point is chosen where the marginal shrinkage of an additional group $K$ reduces the $WSS$ not in a significant manner. This Method is also referred to as the "Elbow Criterion". 
 
-2. Results from this work \citep{henckaerts_boosting_2020} on Tariff structuring working with somewhat similar variables and targets suggest around 25 groups to structure the tariffs. 
+2. Results from this work \citep{yang_risk_2022} on Tariff structuring working with somewhat similar variables and targets suggest around 25 groups to structure tariffs. 
 
 The reduction of $WSS$ for $K$ values two until 20 are plotted in figure xy. Ultimately a specification for K in the middle with 15 groups was chosen, which yielded the following grouping results on the right in figure xy. 
 
