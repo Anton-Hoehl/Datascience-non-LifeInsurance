@@ -36,7 +36,7 @@ $RP_i(L_i) = E(L_i) + \phi\sqrt[]{Var(L_i)}$
   
 
 Where $E(L_i)$ is the expected loss per policyholder in cluster i (Pure Premium in cluster i), 
-$\phi$ is the risk parameter and $\phi\sqrt[]{Var(L_i)}$ is the risk loading. The choice of the risk parameter is up to us. We chose to calculate the risk premium for three levels of risk parameters ϕ_1 = 0.02 as low risk, ϕ_2 = 0.06 as medium risk, ϕ_3 = 0.15 as high risk.
+$\phi$ is the risk parameter and $\phi\sqrt[]{Var(L_i)}$ is the risk loading. The choice of the risk parameter is up to us. We chose to calculate the risk premium for three levels of risk parameters ϕ_1 = 0.02 as low risk, ϕ_2 = 0.06 as medium risk, ϕ_3 = 0.15 as high risk.The following tables visualise this. 
 
 
 ```{r fig.align='center',fig.width=6, fig.height=5, echo=FALSE, fig.cap="Loadings", warning=FALSE, message=FALSE}
