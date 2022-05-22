@@ -74,7 +74,9 @@ clustering <- mtpl_tariff %>%
             avg_freq_pred = mean(freq_pred),
             avg_lnsev_pred = mean(log(sev_pred)),
             Pure_Premium_ind = mean(pure_premium),
-            claims_obs = sum(chargtot))
+            claims_obs = sum(chargtot),
+            Pure_Premium_tot = sum(pure_premium),
+            diff = sum(pure_premium) - sum(chargtot))
             
 
 
@@ -90,23 +92,9 @@ summary(clustering$Pure_Premium_ind)
 # ==============================================================================
 
 
-clustering <- mtpl_tariff %>% 
-  select(c(nbrtotc, cluster)) %>% 
-  filter(nbrtotc >= 1) %>%
-  group_by(cluster, nbrtotc) %>% 
-  summarise(count = n())
-
-
-
 ggplot(clustering, aes(fill=nbrtotc, y=count, x=cluster)) + 
   geom_bar(position="fill", stat="identity")
 
-
-clustering <- mtpl_tariff %>% 
-  mutate(pure_premium = sev_pred * freq_pred) %>% 
-  select(c(pure_premium, cluster)) %>% 
-  group_by(cluster) %>% 
-  dplyr::summarise(avg = mean(pure_premium))
 
 
 cluster_params <- mtpl_tariff %>% 
@@ -134,19 +122,22 @@ riskP <- Vectorize(riskP, vectorize.args = c("PP","num_ph","lambda","mu","theta"
 #----final tariff tables for different theta values--------------------------------------
 tariff_structure <- list()
 
-for (i in 1:10) {
+for (i in 1:3) {
 
 theta <- 0.02*i
   
 tariff_structure[[i]] <- tibble("Tariff_Name" = clustering$Tariff_Name) %>%
-                           mutate(PP_GLM = clustering$Pure_Premium_ind,
-                                  RP_GLM = riskP(
+                           mutate(PP = clustering$Pure_Premium_ind,
+                                  RP_phi1 = riskP(
                                     clustering$Pure_Premium_ind,
                                     clustering$num_ph,
                                     clustering$avg_freq_pred,
                                     clustering$avg_lnsev_pred,
                                     sigma,
-                                    theta = theta
-                                  ))
+                                    theta = theta)) %>%
+                          mutate(RP_phi1_tot = RP_phi1*clustering$num_ph,
+                                 claims_obs = clustering$claims_obs,
+                                 diff = RP_phi1_tot - claims_obs)
 
 }
+
