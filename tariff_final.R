@@ -1,6 +1,7 @@
 #----run source codes to get input data for tarrif structure build---------------------------------------------------------------
 source("0203_gam_claimfrequency.R")
 source("0203_gam_severity_v2.R")
+source("model_comp.R")
 
 # add the ageph_class_s groups
 

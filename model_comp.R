@@ -1,5 +1,3 @@
-source('0203_gam_claimfrequency.R')
-source('0203_gam_severity_v2.R')
 
 mfolds <- function(dataset_freq, dataset_sev, K = 6) {
   
@@ -189,7 +187,7 @@ mfolds <- function(dataset_freq, dataset_sev, K = 6) {
 
 
 # actual step of model calibration 
-results <- mfolds(dataset_freq = mtpl_training, 
+results <- mfolds(dataset_freq = mtpl_training_final, 
                   dataset_sev = mtpl_sev_training) %>% 
               pivot_longer(!c(fold_name_freq, fold_name_sev), 
                            names_to = "Model", 
@@ -199,17 +197,31 @@ results <- mfolds(dataset_freq = mtpl_training,
 oos <- results %>% filter(Model == "performance_glm_freq" | Model == "performance_xgb_freq")
 
 # plotting of the poisson deviance 
-fpl <- ggplot(data = oos, aes(x = fold_name_freq, y = Performance, 
+fpl1 <- ggplot(data = oos, aes(x = fold_name_freq, y = Performance, 
                              col = Model, group = Model)) + 
           scale_color_manual(values= c("performance_glm_freq"="#f9b300" ,
                                        "performance_xgb_freq"="#1f973d")) +
           geom_line() +
           labs(x = "Fold number:", y = "Poisson Deviance", 
-               title = "6-Fold Claim Frequency Cross Validation") +
+               title = "6-Fold CV Frequency Out of Sample") +
           theme_bw()
 
-plot(fpl)
+plot(fpl1)
 
+# in sample
+ins <- results %>% filter(Model == "ins_xgb_freq" | Model == "ins_glm_freq")
+
+# plotting the RMSE of freq 
+fpl2 <- ggplot(data = ins, aes(x = fold_name_sev, y = Performance, 
+                               col = Model, group = Model)) + 
+  scale_color_manual(values= c("ins_glm_freq"="#f9b300" ,
+                               "ins_xgb_freq"="#1f973d")) +
+  geom_line() +
+  labs(x = "Fold number:", y = "RMSE", 
+       title = "6-Fold CV Frequency In Sample") +
+  theme_bw()
+
+plot(fpl2)
 # This approach needs to be replicated for the Severity
 #===========================================================================
 
@@ -217,16 +229,32 @@ plot(fpl)
 oos <- results %>% filter(Model == "performance_glm_sev" | Model == "performance_xgb_sev")
 
 # plotting the RMSE of severity 
-fpl <- ggplot(data = oos, aes(x = fold_name_sev, y = Performance, 
+fpl3 <- ggplot(data = oos, aes(x = fold_name_sev, y = Performance, 
                               col = Model, group = Model)) + 
   scale_color_manual(values= c("performance_glm_sev"="#1f973d" ,
                                "performance_xgb_sev"="#d60206")) +
   geom_line() +
   labs(x = "Fold number:", y = "RMSE", 
-       title = "6-Fold Severity Cross Validation") +
+       title = "6-Fold CV Severity Out of Sample") +
   theme_bw()
 
-plot(fpl)
+plot(fpl3)
+
+
+# in sample
+ins <- results %>% filter(Model == "ins_xgb_sev" | Model == "ins_glm_sev")
+
+# plotting the RMSE of severity 
+fpl4 <- ggplot(data = ins, aes(x = fold_name_sev, y = Performance, 
+                               col = Model, group = Model)) + 
+  scale_color_manual(values= c("ins_glm_sev"="#1f973d" ,
+                               "ins_xgb_sev"="#d60206")) +
+  geom_line() +
+  labs(x = "Fold number:", y = "RMSE", 
+       title = "6-Fold CV Severity In Sample") +
+  theme_bw()
+
+plot(fpl4)
 
 
 
