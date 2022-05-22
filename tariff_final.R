@@ -121,10 +121,11 @@ riskP <- Vectorize(riskP, vectorize.args = c("PP","num_ph","lambda","mu","theta"
 
 #----final tariff tables for different theta values--------------------------------------
 tariff_structure <- list()
+thetas <- c(0.02,0.06,0.15)
 
 for (i in 1:3) {
 
-theta <- 0.02*i
+theta <- thetas[i]
   
 tariff_structure[[i]] <- tibble("Tariff_Name" = clustering$Tariff_Name) %>%
                            mutate(PP = clustering$Pure_Premium_ind,
@@ -141,3 +142,4 @@ tariff_structure[[i]] <- tibble("Tariff_Name" = clustering$Tariff_Name) %>%
 
 }
 
+tariff_structure
