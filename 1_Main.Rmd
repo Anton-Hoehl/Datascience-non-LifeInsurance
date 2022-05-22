@@ -18,7 +18,8 @@ header-includes:
   - \usepackage{natbib}\bibliographystyle{agsm}
   - \usepackage[nottoc, numbib]{tocbibind}
   - \usepackage[nottoc]{tocbibind}
-bibliography: "5_1_ALIM_Papers.bib"
+bibliography: "combined.bib"
+nocite: '@*'
 ---
 
 

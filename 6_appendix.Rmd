@@ -4,4 +4,11 @@ output: pdf_document
 ---
 # Appendix
 
-Insert code here.
+
+\newpage
+
+
+```{r fig.align='center',fig.width=6, fig.height=6, echo=FALSE, fig.cap="Smoother of lat and long", warning=FALSE, message=FALSE}
+grid.arrange(grobs = list(fpl1, fpl3), ncol = 1)
+grid.arrange(grobs = list(fpl2, fpl4), ncol = 1)
+```

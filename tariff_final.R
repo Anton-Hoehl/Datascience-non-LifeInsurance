@@ -2,6 +2,7 @@
 source("0203_gam_claimfrequency.R")
 source("0203_gam_severity_v2.R")
 source("model_comp.R")
+source("0201_xgboost_claimfrequency.R")
 
 # add the ageph_class_s groups
 

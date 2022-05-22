@@ -1,3 +1,9 @@
+# function from github: https://github.com/henckr/treeML/blob/master/treeML.Rmd
+
+# Poisson deviance
+dev_poiss <- function(ytrue, yhat) {
+  -2 * mean(dpois(ytrue, yhat, log = TRUE) - dpois(ytrue, ytrue, log = TRUE), na.rm = TRUE)
+}
 
 mfolds <- function(dataset_freq, dataset_sev, K = 6) {
   

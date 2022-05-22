@@ -25,13 +25,12 @@ Because insurance is a highly regulated business there is a need to use transpar
 ```{r fig.align='center',fig.width=5, fig.height=4, echo=FALSE, fig.cap="Frequency and Severity plotted against Age of the Policy Holder", warning=FALSE, message=FALSE}
 grid.arrange(grobs = list(g_ageph_nbrtotc,g_ageph_sevfreq))
 ```
-  
+### Generalized Additive Models
 This is where Generalized Additive Models (GAMs) come in play. With these models we can introduce smoother functions of covariates that smooth the wiggly non-linear functions to our liking. 
 Modeling strategy of this paper is motivated by (citation of Katrin’s paper on GAMs). The authors start with a GAM for claim frequency and subsequently use different “binning” methods to cluster continuous and spatial covariates to produce factor variables with few levels, so a set of used factor features can be deployed in a GLM for claim frequency and respectively claim severity.
 
-Another modeling approach is offered by the group of algorithms called gradient boosting machines or GBMs. They are part of the tree based family of models and can show extraordinary performance. 
-The Xtreme Gradient Boosting algorithm or XGB in short is one of them. 
-
+### Xtreme Gradient Boosting
+Another modeling approach is offered by the group of algorithms called gradient boosting machines or GBMs. They are part of the tree based family of models and can show extraordinary predictive performance. During the modeling process we care a lot about bias and variance of our model. Boosting machines solve this in a unique way by employing an ensemble of so called weaker learners. These could be in a tree context very shallow decision trees, usually not incorporating more than 2 or 3 splits. Their properties are usually to have low variance due to beeing very shallow but also incorporate higher bias due to the same reason. To consequentially also reduce the bias a sequential algorithm then re samples the data, putting a higher weight on larger errors in previous iterations. Lastly this leaves a risk of overfitting the data and resulting in a poor out of sample performance. This is where Xtreme Gradient Boosting or XGB comes into play. Additionally to the sampling of rows the XGB Algorithm is also able to sample columns similarly to random forests. This makes Xtreme Gradient Boosting extremely interesting to compare performances to in our case. 
 
 
 \newpage
@@ -41,12 +40,45 @@ The Xtreme Gradient Boosting algorithm or XGB in short is one of them.
 ### Claim Frequency
 First step in any data modeling would be figuring out the distribution of the response variable, in our case the claim frequency (nbrtotc). Because we are dealing with count data we assume the response variable to follow a discrete distribution suitable for the type of data. Generali we would go for a Poison distribution, simply because of its capability to be described only by the mean. From the data set we estimated that the mean is 0.1238649 and the variance is 0.1350207. Based on these close values, we assume claim frequency follows a Poisson distribution. Because of the presence of the duration information (exposure) in our data set, we include the logarithm of exposure (lnexpo) as an offset in our model to penalize the few policyholders with a contract duration shorter than one year, and because our predictions are expressed in an one-year unit.
 
-#### Smoothed effect of the policyholder age
-Before we do an exhaustive search of the best model given our data, we look how well can the non-liner effect of the policyholder age be described by a smoother. For this smoother we use the thin plate spline which is the default basis function in gam() function of the R mgcv package.
+#### Univariate smoother of the policyholder age
+Before we dive into an exhaustive feature selection process, we look how well can the non-liner effect of the policyholder age be described by a univariate smoother. We predict the claim frequency only just with the policyholder age. For this smoother we use the thin plate spline which is the default basis function in gam() function of the R mgcv package. For the estimation of the smoothing parameters, we use the mixed model approach via restricted maximum likelihood (REML). For the link function we use the natural logarithm.
 
-```{r fig.align='center',fig.width=6, fig.height=5, echo=FALSE, fig.cap="Smother of ageph with default number of basis functions", warning=FALSE, message=FALSE}
+```{r fig.align='center',fig.width=4, fig.height=4, echo=FALSE, fig.cap="Smother of ageph", warning=FALSE, message=FALSE}
 plot(freq_ageph_gam)
 ```
+
+After trying different number of basis dimensions, we conclude that k = 6 suits the data the best, because it gave us the minimal AIC value. This is also the only parameter we tuned in the GAMs. For example, the smoothing parameter was optimally chosen by the used function in R. Output of the model also indicates statistical significance with a low p-value.
+
+#### Bivariate smoother of the latitude and longitude coordinates  
+Now we model claim frequency only using the latitude and longitude coordinates in a bivariate smoother with thin plate spline basis functions. We can use the thin plate splines in this case also, because both continuous variables have the same natural scale. The reason behind a bivariate smoother is our goal, to create a geographical indicator factor variable that bins policyholders with the same riskiness into an artificially created location on the Belgium map. Policyholders inside these bins should be homogenic by only taking spatial data into consideration.
+
+```{r fig.align='center',fig.width=4, fig.height=4, echo=FALSE, fig.cap="Smoother of lat and long", warning=FALSE, message=FALSE}
+plot(freq_spatial_gam, scheme = 2)
+```
+
+Again, we tried different values for k. The minimum AIC value of the bivariate smoother was obtained with k = 25, with the value of the smoothing parameter chosen by the function. Output indicates statistical significance of the smoother.
+
+#### Exhaustive GAM search for claim frequency  
+We now perform an exhaustive search for feature selection based on the minimal AIC value to find our final GAM for claim frequency. Because we don’t have more continuous variables in our data set and we don’t want to include interactions between factor and continuous variables, no more than the previously introduced smoothed functions are needed in the model. We also exclude variables chargtot and nbrtotan in the step search. From the set of candidate features, the step procedure yields the following model
+
+$\log(E[nbrtotc]) = \log(duree) +\beta_0 + \beta_1fuelc_{petrol} + \beta_2split_{once}+ \beta_3split_{thrice}+ \beta_4split_{thrice}+ \beta_5coverp_{MTPL+}+ \beta_6coverp_{MTPL+++}+ \beta_7powerc_{>110}+ \beta_8powerc_{66-110}+ \beta_9agecar_{0-1}+ \beta_{10}agecar_{2-5}+ \beta_{11}agecar{6-10}+ f_1(ageph)+ f_2(long, lat)$
+  
+Hello this is some text before the formula. 
+  
+$E[\log(sev)] = \beta_0 + \beta_1agecar_{0-1} + \beta_2agecar_{2-5}+ \beta_3agecar_{6-10}+ \beta_4coverp_{MTPL+}+ \beta_5coverp_{MTPL+++}+ \beta_6split_{once}+ \beta_7split_{thrice}+ \beta_8split_{twice}+ f_1(ageph)$
+
+
+## Xtreme Gradient Boosting Approach
+
+The Xtreme gradient Boosting algorithm can help us in two different ways for further analysis. First of all we use it to evaluate whether it asssigns similar explanatory power to the variables chosen in our final GAM. To do that we take a look at the produced variable importance plots by the model. We do this each one time for frequency and severity. We can see the following in the plots that the variables show a similar ordering with regard to the importance as the final chosen GLM. 
+
+
+```{r fig.align='center',fig.width=5, fig.height=5, echo=FALSE, fig.cap="Variable Importance", warning=FALSE, message=FALSE}
+grid.arrange(grobs = list(m1_pl,m2_pl))
+```
+
+
+The final fitted model from our GLM Approach was also benchmarked against an Xtreme Gradient Boosting model specification. To achive comparability we used the same variables for claim frequency and severity modeling. Engineered features are also taken into account using the same levels. The idea is to plot the performance of both model specifications the GAM and XGB as well for frequency and severity for their respective in and out of sample performances across 6 folds of data. The results of this analysis can be found in the appendix under the following PLOT as the plots take up quite some space. In summary we could see that even variability in the underlying data (across folds) led to similar out and in sample variance of performance. This could hint that the variability in the training sets effecte the predictive performance of both algorithms in a similar manner. Generally speaking the difference in Poisson Deviance between the XGB and GAM is nearly non existend and performed similarly to the results of the following PAPER \citep{}
 
 
 

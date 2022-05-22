@@ -13,7 +13,7 @@ header-includes:
 
 # Introduction
 
-Insurers provide cover under adverse events for their clients. Assessing risk premiums within respective tariff classes is of key issue for actuaries to ensure that insurance claims can be served. \citep{antonio_iabe_nodate,robben_assessing_2022} This work provides an analysis on the comparison of different modelling approaches to risk parameters in the case of automobile insurance, building a structure of proposed tariff groups with respectively calculated risk loadings on top of it. The methodic chapter is split into two steps due to this reason. To a certain degree the general structure of this scientific work is followed. \citep{antonio_iabe_nodate,robben_assessing_2022} In the first part we estimate the pure premium by modelling claim frequency and severity seperately to then evaluate the premium. Within  modeling we considered GLM and XGboost models and evaluated their performance to solve the task at hand. Finally in a second stage we cluster clients into groups of similar risk and  provide a method to calculate risk loadings on the group level of our tariff structure. 
+Insurers provide cover under adverse events for their clients. Assessing risk premiums within respective tariff classes is of key issue for actuaries to ensure that insurance claims can be served. \citep{henckaerts_boosting_2020} This work provides an analysis on the comparison of different modelling approaches to risk parameters in the case of automobile insurance, building a structure of proposed tariff groups with respectively calculated risk loadings on top of it. The methodic chapter is split into two steps due to this reason. To a certain degree the general structure of this scientific work is followed. \citep{henckaerts_boosting_2020}  In the first part we estimate the pure premium by modelling claim frequency and severity separately to then evaluate the premium. Within  modeling we considered GLM and XGboost models and evaluated their performance to solve the task at hand. Finally in a second stage we cluster clients into groups of similar risk and  provide a method to calculate risk loadings on the group level of our tariff structure. 
 
 
 ## Exploration of the Motor Third Party Liability Dataset
@@ -55,13 +55,13 @@ Furthermore the postal code gives us information about where in Belgium the poli
 \newpage
   
   
-```{r fig.align='center',fig.width=5, fig.height=4, echo=FALSE, fig.cap="Spatial Exposure", warning=FALSE, message=FALSE}
+```{r fig.align='center',fig.width=6, fig.height=5, echo=FALSE, fig.cap="Spatial Exposure", warning=FALSE, message=FALSE}
 be_expo_reg
 
 ```
 
 
-Taking a closer look at the frequency of certain features reveals interesting insights about our dataset. Starting with the first plot in the top left of Figure 2: Summary Plots we take a look at $duree$, it shows that most policy holder were insured during the whole year. The histograms for $nbrtotan$ and $nbrtotc$ reveal then again what we know from academic theory: the absolute majority of policy holders have zero claims.The age of the car was binned into groups prior and shows that intervals with higher car ages become larger and then drop off for the highest group which includes car which are older than 10 years. Most individuals in our set pay once a year, use the car in a private context, which is not in a fleet and not a sportscar. Given that sport cars are not really represented in the data it makes sense that almos all cars have less than 110 hp. 
+Taking a closer look at the frequency of certain features reveals interesting insights about our dataset. Starting with the first plot in the top left of Figure 2: Summary Plots we take a look at $duree$, it shows that most policy holder were insured during the whole year. The histograms for $nbrtotan$ and $nbrtotc$ reveal then again what we know from academic theory: the absolute majority of policy holders have zero claims. The variable $totan$ represents the number of claims scaled on the timeframe of a year. This is done via the variable $duree$ representing the proportion of the year during which the policy holder was actually insured.  The age of the car was binned into groups prior and shows that intervals with higher car ages become larger and then drop off for the highest group which includes car which are older than 10 years. Most individuals in our set pay once a year, use the car in a private context, which is not in a fleet and not a sportscar. Given that sport cars are not really represented in the data it makes sense that almos all cars have less than 110 hp. 
 
 
 ```{r fig.align='center',fig.width=8, fig.height=10, echo=FALSE, fig.cap="Summary Plots", warning=FALSE, message=FALSE}
